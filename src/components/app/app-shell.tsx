@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { Suspense, useState } from "react";
-import { Bell, Bot, Menu, Search } from "lucide-react";
+import { Bell, Bot, Menu, Search, Sparkles } from "lucide-react";
 import { Brand } from "@/components/brand";
+import { LegalLinks } from "@/components/legal/legal-footer";
 import { ProcurementDrawer } from "@/components/procurement/procurement-drawer";
 import { AccountMenu } from "./account-menu";
 import { AssistantPanel } from "./assistant-panel";
@@ -35,7 +36,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main id="conteudo-principal" className="page-content">{children}</main>
+      <footer className="app-footer"><LegalLinks /></footer>
       <Suspense fallback={null}><ProcurementDrawer /></Suspense>
+      {!assistantOpen && <button type="button" className="assistant-fab" onClick={() => setAssistantOpen(true)} aria-label="Abrir assistente de IA"><Sparkles aria-hidden="true" /><span>Assistente</span></button>}
       <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />
     </div>
   );

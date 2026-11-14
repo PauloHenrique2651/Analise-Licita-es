@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Sans } from "next/font/google";
 import "./globals.css";
+import { CookieConsent } from "@/components/legal/cookie-consent";
+import { PublicLegalFooter } from "@/components/legal/legal-footer";
 
 const instrumentSans = Instrument_Sans({
   subsets: ["latin"],
@@ -23,7 +25,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={instrumentSans.variable}>
-      <body>{children}</body>
+      <body>{children}<PublicLegalFooter /><CookieConsent /></body>
     </html>
   );
 }
