@@ -1508,3 +1508,16 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
   .cookie-icon { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .cookie-banner, .cookie-dialog { animation: none !important; } }
+
+/* Rankings do painel de mercado */
+.rank-list { list-style: none; margin: 0; padding: 6px 0; }
+.rank-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 16px; border-top: 1px solid var(--border); }
+.rank-list li:first-child { border-top: 0; }
+.rank-pos { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; }
+.rank-body { min-width: 0; display: grid; gap: 5px; }
+.rank-body strong { font-weight: 560; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.rank-bar i { display: block; height: 100%; border-radius: 999px; background: var(--signal); }
+.rank-value { text-align: right; display: grid; }
+.rank-value strong { font-variant-numeric: tabular-nums; font-size: 13.5px; }
+.rank-value small { color: var(--subtle); font-size: 12px; }

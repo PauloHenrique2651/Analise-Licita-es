@@ -46,8 +46,48 @@ export async function getMarketSummary(filters: MarketFilters = {}) {
         ? rows.reduce((sum, row) => sum + Number(row.average_winner_price ?? 0), 0) / rows.length
         : 0,
     },
-    timeline: rows.map((row) => ({ period: row.period_start, value: Number(row.total_value ?? 0) })),
+    timeline: timelineByPeriod(rows),
     stateValues,
+    rankings: await getRankings(supabase, filters.uf),
+  };
+}
+
+export type RankingItem = { label: string; value: number; detail: string | null };
+export type Rankings = { suppliers: RankingItem[]; products: RankingItem[]; organizations: RankingItem[] };
+
+function timelineByPeriod(rows: Array<{ period_start: string | null; total_value: number | string | null }>) {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.period_start) continue;
+    const key = String(row.period_start).slice(0, 7);
+    totals.set(key, (totals.get(key) ?? 0) + Number(row.total_value ?? 0));
+  }
+  return [...totals.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([period, value]) => ({ period, value }));
+}
+
+async function getRankings(supabase: Awaited<ReturnType<typeof createClient>>, uf?: string): Promise<Rankings> {
+  let suppliers = supabase.from("company_performance").select("legal_name,state_code,wins,won_value").order("won_value", { ascending: false }).limit(500);
+  let products = supabase.from("product_market_summary").select("grouped_name,state_code,procurement_count,total_value").not("grouped_name", "is", null).order("total_value", { ascending: false }).limit(500);
+  let organizations = supabase.from("organization_purchase_summary").select("legal_name,state_code,procurement_count,total_value").order("total_value", { ascending: false }).limit(500);
+  if (uf) { suppliers = suppliers.eq("state_code", uf); products = products.eq("state_code", uf); organizations = organizations.eq("state_code", uf); }
+  const [{ data: supplierRows }, { data: productRows }, { data: organizationRows }] = await Promise.all([suppliers, products, organizations]);
+
+  const top = (rows: Array<Record<string, unknown>> | null, name: string, value: string, detail: (row: Record<string, unknown>) => string | null): RankingItem[] => {
+    const grouped = new Map<string, { value: number; detail: number }>();
+    for (const row of rows ?? []) {
+      const label = String(row[name] ?? "").trim();
+      if (!label) continue;
+      const current = grouped.get(label) ?? { value: 0, detail: 0 };
+      current.value += Number(row[value] ?? 0);
+      current.detail += Number(detail(row) ?? 0);
+      grouped.set(label, current);
+    }
+    return [...grouped.entries()].sort((a, b) => b[1].value - a[1].value).slice(0, 5).map(([label, item]) => ({ label, value: item.value, detail: item.detail ? String(item.detail) : null }));
+  };
+  return {
+    suppliers: top(supplierRows as Array<Record<string, unknown>> | null, "legal_name", "won_value", (row) => String(row.wins ?? 0)),
+    products: top(productRows as Array<Record<string, unknown>> | null, "grouped_name", "total_value", (row) => String(row.procurement_count ?? 0)),
+    organizations: top(organizationRows as Array<Record<string, unknown>> | null, "legal_name", "total_value", (row) => String(row.procurement_count ?? 0)),
   };
 }
 
@@ -68,5 +108,6 @@ function emptyMarketSummary(message: string) {
     },
     timeline: [] as Array<{ period: string; value: number }>,
     stateValues: {} as Record<string, number>,
+    rankings: { suppliers: [], products: [], organizations: [] } as Rankings,
   };
 }

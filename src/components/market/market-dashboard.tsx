@@ -6,6 +6,7 @@ import { CalendarDays, ChevronDown, Database, Filter, Info, Radio, RefreshCw, Se
 import { createClient } from "@/lib/supabase/client";
 import { BrazilMap } from "./brazil-map";
 import { MarketChart } from "./market-chart";
+import type { RankingItem } from "@/services/market-service";
 
 type Summary = {
   status: string;
@@ -15,6 +16,7 @@ type Summary = {
   kpis: Record<string, number>;
   timeline: Array<{ period: string; value: number }>;
   stateValues: Record<string, number>;
+  rankings: { suppliers: RankingItem[]; products: RankingItem[]; organizations: RankingItem[] };
 };
 
 const kpiDefinitions = [
@@ -106,7 +108,12 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
       </section>
 
       <section className="ranking-grid">
-        {["Empresas vencedoras", "Produtos", "Órgãos compradores"].map((title) => <article className="panel ranking" key={title}><div className="panel-head"><div><p className="panel-title">{title}</p><small>Participação nos resultados encontrados</small></div></div><div className="empty-inline"><Database aria-hidden="true" /><span>Sem dados sincronizados</span></div></article>)}
+        {([["Empresas vencedoras", initialSummary.rankings.suppliers, "vitórias"], ["Produtos", initialSummary.rankings.products, "licitações"], ["Órgãos compradores", initialSummary.rankings.organizations, "licitações"]] as const).map(([title, items, unit]) => {
+          const max = Math.max(1, ...items.map((item) => item.value));
+          return <article className="panel ranking" key={title}><div className="panel-head"><div><p className="panel-title">{title}</p><small>Por valor homologado no recorte</small></div></div>
+            {items.length === 0 ? <div className="empty-inline"><Database aria-hidden="true" /><span>Sem dados neste recorte</span></div> : <ol className="rank-list">{items.map((item, index) => <li key={item.label}><span className="rank-pos">{index + 1}</span><div className="rank-body"><strong title={item.label}>{item.label}</strong><span className="rank-bar" aria-hidden="true"><i style={{ width: `${Math.max(4, (item.value / max) * 100)}%` }} /></span></div><div className="rank-value"><strong>{format(item.value, "currency")}</strong>{item.detail && <small>{item.detail} {unit}</small>}</div></li>)}</ol>}
+          </article>;
+        })}
       </section>
 
       {filtersOpen && <div className="drawer-layer"><button className="drawer-scrim" aria-label="Fechar filtros" onClick={() => setFiltersOpen(false)} /><aside className="filter-drawer" role="dialog" aria-modal="true" aria-labelledby="filter-title"><div className="drawer-head"><div><p className="eyebrow">RECORTE ANALÍTICO</p><h2 id="filter-title">Filtros avançados</h2></div><button className="icon-button" onClick={() => setFiltersOpen(false)} aria-label="Fechar filtros"><X aria-hidden="true" /></button></div><form onSubmit={applyFilters}><div className="filter-fields"><div className="field"><label htmlFor="filter-uf">Estado</label><select id="filter-uf" name="uf" defaultValue={selectedUf ?? ""}><option value="">Brasil</option>{["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map((uf) => <option key={uf}>{uf}</option>)}</select></div><div className="field"><label htmlFor="filter-city">Município</label><input id="filter-city" name="city" placeholder="Todos os municípios" /></div><div className="field span-2"><label htmlFor="filter-product">Produto ou descrição</label><input id="filter-product" name="product" placeholder="Ex.: papel A4, CATMAT 461828" /></div><div className="field"><label htmlFor="filter-category">Categoria</label><input id="filter-category" name="category" placeholder="Todas as categorias" /></div><div className="field"><label htmlFor="filter-period">Período</label><select id="filter-period" name="period" defaultValue="Últimos 12 meses"><option>Últimos 7 dias</option><option>Últimos 30 dias</option><option>Últimos 90 dias</option><option>Últimos 6 meses</option><option>Últimos 12 meses</option><option>Últimos 24 meses</option><option>Últimos 36 meses</option></select></div><div className="field"><label htmlFor="filter-org">Órgão</label><input id="filter-org" name="organization" placeholder="Nome ou CNPJ" /></div><div className="field"><label htmlFor="filter-supplier">Fornecedor</label><input id="filter-supplier" name="supplier" placeholder="Razão social ou CNPJ" /></div><div className="field"><label htmlFor="filter-modality">Modalidade</label><select id="filter-modality" name="modality"><option>Todas</option><option>Pregão eletrônico</option><option>Concorrência</option><option>Dispensa</option><option>Inexigibilidade</option></select></div><div className="field"><label htmlFor="filter-status">Situação</label><select id="filter-status" name="status"><option>Todas</option><option>Aberta</option><option>Homologada</option><option>Deserta</option><option>Fracassada</option><option>Anulada</option></select></div><div className="field"><label htmlFor="filter-min">Valor mínimo</label><input id="filter-min" name="min" type="number" min="0" inputMode="decimal" /></div><div className="field"><label htmlFor="filter-max">Valor máximo</label><input id="filter-max" name="max" type="number" min="0" inputMode="decimal" /></div></div><div className="drawer-actions"><button type="button" className="button ghost" onClick={() => setChips([])}>Limpar filtros</button><button type="submit" className="button primary">Aplicar filtros</button></div></form></aside></div>}
