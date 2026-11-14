@@ -1,7 +1,0 @@
-{
-  "tool_name": "mcp__Claude_Browser__navigate",
-  "tool_input_preview": "{\"url\":\"http://localhost:3000/login\",\"tabId\":\"tab-1\"}",
-  "error": "navigation to http://localhost:3000 was denied or failed",
-  "timestamp": "2026-11-14T11:29:56.547Z",
-  "retry_count": 1
-}

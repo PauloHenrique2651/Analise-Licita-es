@@ -14,3 +14,4 @@ supabase/.temp/
 .local-data/
 .claude/
 supabase/schema-bundle.sql
+.omc/
