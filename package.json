@@ -1,0 +1,63 @@
+{
+  "name": "nexo-publico",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "db:bundle": "node scripts/bundle-migrations.mjs",
+    "db:up": "docker compose up -d",
+    "db:setup": "node --env-file-if-exists=.env.local --import tsx scripts/local-db-setup.ts",
+    "db:reset": "docker compose down -v && docker compose up -d && node --env-file-if-exists=.env.local --import tsx scripts/local-db-setup.ts",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint src proxy.ts next.config.ts vitest.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sync:pncp": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-pncp.ts",
+    "sync:procurements": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-procurements.ts",
+    "sync:procurements:quick": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-procurements.ts --quick",
+    "sync:procurements:backfill": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/backfill-procurements.ts",
+    "sync:results": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-procurement-results.ts",
+    "sync:results:backfill": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-procurement-results.ts --backfill",
+    "sync:watchdog": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-watchdog.ts",
+    "sync:rj-siga": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-rj-siga.ts",
+    "sync:rj-siga:all": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-rj-siga.ts --all --force",
+    "sync:rj-siga:items": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-rj-siga-items.ts",
+    "sync:catalog": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-catalog.ts",
+    "sync:geography": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/sync-geography.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "latest",
+    "@supabase/supabase-js": "latest",
+    "@svg-maps/brazil": "^2.0.0",
+    "date-fns": "latest",
+    "lucide-react": "latest",
+    "next": "latest",
+    "pg": "^8.23.1",
+    "react": "latest",
+    "react-dom": "latest",
+    "recharts": "latest",
+    "server-only": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "latest",
+    "@testing-library/dom": "latest",
+    "@testing-library/jest-dom": "latest",
+    "@testing-library/react": "latest",
+    "@types/node": "latest",
+    "@types/pg": "^8.23.1",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "jsdom": "latest",
+    "tsx": "^4.23.13",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

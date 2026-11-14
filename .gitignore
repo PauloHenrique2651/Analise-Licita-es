@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.next-locked-*/
+out/
+coverage/
+.vercel/
+.env
+.env.local
+.env.*.local
+*.log
+*.tsbuildinfo
+supabase/.temp/
+.DS_Store
+.local-data/
+.claude/
+supabase/schema-bundle.sql
