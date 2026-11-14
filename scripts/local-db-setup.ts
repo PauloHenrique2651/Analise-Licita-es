@@ -52,6 +52,8 @@ async function main() {
       }
     }
 
+    // Como no Supabase, os papéis da API enxergam o schema public; o RLS decide as linhas. Views materializadas não herdam o default.
+    await client.query("grant select on all tables in schema public to anon, authenticated; grant all on all tables in schema public to service_role");
     const email = process.env.LOCAL_DEV_USER_EMAIL?.trim().toLowerCase();
     const password = process.env.LOCAL_DEV_USER_PASSWORD;
     if (email && password) {
