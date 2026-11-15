@@ -30,6 +30,8 @@ export const pncpConnector: ProcurementProvider = {
       retries: 2,
       cacheSeconds: 0,
     });
+    // PNCP responde 204 (corpo vazio) quando o filtro não tem publicações: página vazia, não erro.
+    if (raw === null) return { records: [], page: params.page ?? 1, totalPages: 0, totalRecords: 0, remainingPages: 0 };
     const page = pncpSearchPageSchema.parse(raw);
     return {
       records: page.data.map((record) => mapPncpProcurement(record, url.toString())),

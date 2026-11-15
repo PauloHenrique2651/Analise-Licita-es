@@ -39,6 +39,8 @@ export const pncpProvider = {
       retries: 2,
       timeoutMs: 75_000,
     });
+    // PNCP responde 204 (corpo vazio) quando não há publicações no filtro: é página vazia, não erro.
+    if (response === null) return { data: [], totalRegistros: 0, totalPaginas: 0, numeroPagina: query.pagina ?? 1, paginasRestantes: 0 };
     return pncpSearchPageSchema.parse(response);
   },
 
