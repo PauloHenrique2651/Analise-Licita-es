@@ -19,7 +19,7 @@ export default function UpdatePasswordPage() {
     const form = new FormData(event.currentTarget);
     const password = String(form.get("password") ?? "");
     const confirmation = String(form.get("passwordConfirmation") ?? "");
-    if (password.length < 12) return setError("Use uma senha com pelo menos 12 caracteres.");
+    if (password.length < 8) return setError("Use uma senha com pelo menos 8 caracteres.");
     if (password !== confirmation) return setError("As senhas não coincidem.");
     setPending(true);
     const { error: updateError } = await createClient().auth.updateUser({ password });
@@ -31,8 +31,8 @@ export default function UpdatePasswordPage() {
   return <main className="login-page single-login"><section className="login-panel" aria-labelledby="password-title"><div className="login-card password-reset-card">
     <Brand /><div className="reset-security-mark"><ShieldCheck aria-hidden="true" /></div><p className="eyebrow update-eyebrow">PROTEÇÃO DA CONTA</p><h1 id="password-title">Defina uma nova senha</h1><p className="muted">Crie uma senha exclusiva para proteger os dados da sua empresa.</p>
     {complete ? <div className="password-complete" role="status"><Check aria-hidden="true" /><div><strong>Senha atualizada</strong><span>Redirecionando para sua central de inteligência…</span></div></div> : <form className="login-form" onSubmit={updatePassword}>
-      <div className="field"><label htmlFor="new-password">Nova senha</label><div className="password-field input-with-icon"><KeyRound aria-hidden="true" /><input id="new-password" name="password" type={showPassword ? "text" : "password"} minLength={12} maxLength={128} autoComplete="new-password" required aria-describedby="new-password-hint" /><button className="icon-button" type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} aria-pressed={showPassword}>{showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}</button></div><small id="new-password-hint">Use 12 ou mais caracteres e evite reutilizar senhas.</small></div>
-      <div className="field"><label htmlFor="password-confirmation">Confirme a nova senha</label><input id="password-confirmation" name="passwordConfirmation" type={showPassword ? "text" : "password"} minLength={12} maxLength={128} autoComplete="new-password" required /></div>
+      <div className="field"><label htmlFor="new-password">Nova senha</label><div className="password-field input-with-icon"><KeyRound aria-hidden="true" /><input id="new-password" name="password" type={showPassword ? "text" : "password"} minLength={8} maxLength={128} autoComplete="new-password" required aria-describedby="new-password-hint" /><button className="icon-button" type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} aria-pressed={showPassword}>{showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}</button></div><small id="new-password-hint">Use 8 ou mais caracteres e evite reutilizar senhas.</small></div>
+      <div className="field"><label htmlFor="password-confirmation">Confirme a nova senha</label><input id="password-confirmation" name="passwordConfirmation" type={showPassword ? "text" : "password"} minLength={8} maxLength={128} autoComplete="new-password" required /></div>
       {error && <div className="form-error" role="alert">{error}</div>}<button className="button primary full" disabled={pending}>{pending ? <LoaderCircle className="spin" aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}{pending ? "Atualizando…" : "Salvar nova senha"}</button><Link className="button ghost full" href="/login">Voltar para entrar</Link>
     </form>}
   </div></section></main>;
