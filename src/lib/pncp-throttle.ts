@@ -44,3 +44,41 @@ export async function backoffPncp(ms = 60_000) {
     [ms],
   );
 }
+
+/**
+ * Disjuntor por serviço. O PNCP tem serviços separados (consulta de cabeçalhos x itens/detalhes) e um pode cair sozinho.
+ * 4 falhas seguidas (502/503/504) abrem o disjuntor por 10 min: as chamadas desse serviço falham na hora, sem gastar
+ * o orçamento de requisições, e o resto da coleta segue. Depois de 10 min uma chamada de teste decide se reabre.
+ */
+let circuitPrepared: Promise<void> | null = null;
+function prepareCircuit() {
+  circuitPrepared ??= (async () => {
+    await getPool().query("create schema if not exists local_meta");
+    await getPool().query("create table if not exists local_meta.circuit (key text primary key, failures int not null default 0, open_until timestamptz)");
+  })();
+  return circuitPrepared;
+}
+
+/** Segundos restantes com o disjuntor aberto (0 = fechado). */
+export async function circuitOpenSeconds(key: string) {
+  if (!isLocalBackend()) return 0;
+  await prepareCircuit();
+  const { rows } = await getPool().query<{ s: number }>("select coalesce(extract(epoch from (open_until - now())), 0)::float8 as s from local_meta.circuit where key = $1", [key]);
+  return Math.max(0, Math.ceil(Number(rows[0]?.s ?? 0)));
+}
+
+export async function circuitRecord(key: string, ok: boolean) {
+  if (!isLocalBackend()) return;
+  await prepareCircuit();
+  if (ok) {
+    await getPool().query("insert into local_meta.circuit (key, failures) values ($1, 0) on conflict (key) do update set failures = 0, open_until = null", [key]);
+    return;
+  }
+  await getPool().query(
+    `insert into local_meta.circuit (key, failures) values ($1, 1)
+     on conflict (key) do update set
+       failures = case when local_meta.circuit.failures + 1 >= 4 then 3 else local_meta.circuit.failures + 1 end,
+       open_until = case when local_meta.circuit.failures + 1 >= 4 then now() + interval '10 minutes' else local_meta.circuit.open_until end`,
+    [key],
+  );
+}

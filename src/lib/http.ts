@@ -1,6 +1,6 @@
 import "server-only";
 import { sharedCache } from "@/lib/api-cache";
-import { backoffPncp, waitForPncpSlot } from "@/lib/pncp-throttle";
+import { backoffPncp, circuitOpenSeconds, circuitRecord, waitForPncpSlot } from "@/lib/pncp-throttle";
 
 export class ProviderError extends Error {
   constructor(
@@ -29,7 +29,15 @@ export async function fetchJson<T>(url: URL, options: FetchOptions): Promise<T> 
   return fetchJsonUncached<T>(url, options);
 }
 
+/** Serviço de itens/detalhes do PNCP (separado da consulta de cabeçalhos), que cai de forma independente. */
+const pncpItemsService = (url: URL, provider: string) => provider === "PNCP" && url.pathname.includes("/api/pncp/");
+
 async function fetchJsonUncached<T>(url: URL, options: FetchOptions): Promise<T> {
+  const breaker = pncpItemsService(url, options.provider);
+  if (breaker) {
+    const open = await circuitOpenSeconds("pncp-items");
+    if (open > 0) throw new ProviderError(`PNCP (itens) fora do ar; nova tentativa em ${open}s.`, 503, options.provider);
+  }
   const retries = options.retries ?? 2;
   let lastError: unknown;
 
@@ -60,6 +68,7 @@ async function fetchJsonUncached<T>(url: URL, options: FetchOptions): Promise<T>
           await new Promise((resolve) => setTimeout(resolve, backoffMs));
           continue;
         }
+        if (breaker && [502, 503, 504].includes(response.status)) await circuitRecord("pncp-items", false);
         throw new ProviderError(
           `${options.provider} respondeu com HTTP ${response.status}.`,
           response.status,
@@ -67,6 +76,7 @@ async function fetchJsonUncached<T>(url: URL, options: FetchOptions): Promise<T>
         );
       }
       const body = await response.text();
+      if (breaker) await circuitRecord("pncp-items", true);
       return (body.trim() ? JSON.parse(body) : null) as T;
     } catch (error) {
       lastError = error;

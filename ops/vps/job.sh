@@ -12,6 +12,9 @@ run()   { (cd "$APP" && node --env-file=/srv/nexo/.env --conditions=react-server
 pncp_headers() { run "$@"; }
 pncp_items()   { run "$@"; }
 
+# Serviço de itens do PNCP fora do ar (disjuntor aberto)? As fases de itens esperam; cabeçalhos seguem.
+items_down() { run scripts/pncp-circuit.ts >/dev/null 2>&1; [ $? -eq 10 ]; }
+
 summary='import sys,json
 t=sys.stdin.read()
 try:
@@ -34,6 +37,7 @@ case "$1" in
       if [ $((cycle % 12)) -eq 0 ]; then days="$(TZ=America/Sao_Paulo date -d '-2 day' +%F) $(TZ=America/Sao_Paulo date -d '-1 day' +%F) $today"; fi
       for day in $days; do
         SYNC_MAX_PAGES=500 SYNC_PAGE_SIZE=50 SYNC_WITH_ITEMS=false SYNC_SKIP_UNCHANGED=false         SYNC_MODALITY_CONCURRENCY=1 SYNC_MODALITY_DELAY_MS=0 SYNC_PAGE_DELAY_MS=0           pncp_headers scripts/sync-procurements.ts --provider=PNCP --start=$day --end=$day 2>&1 | python3 -c "$summary" "espelho-cabecalhos $day:"
+        if items_down; then echo "espelho-itens $day: serviço de itens do PNCP fora do ar, pulando"; continue; fi
         SYNC_MAX_PAGES=500 SYNC_PAGE_SIZE=50 SYNC_WITH_ITEMS=true SYNC_SKIP_UNCHANGED=true         SYNC_MODALITY_CONCURRENCY=1 SYNC_MODALITY_DELAY_MS=0 SYNC_PAGE_DELAY_MS=0           pncp_items scripts/sync-procurements.ts --provider=PNCP --start=$day --end=$day 2>&1 | python3 -c "$summary" "espelho-itens $day:"
       done
       cycle=$((cycle + 1))
@@ -62,6 +66,7 @@ case "$1" in
   backfill-items-PNCP)
     # Histórico com itens: percorre os dias de novo e só busca itens do que ainda não tem.
     while true; do
+      if items_down; then echo "histórico-itens PNCP: serviço de itens do PNCP fora do ar, aguardando"; sleep 120; continue; fi
       out=$(BACKFILL_STATE_SUFFIX=_ITEMS BACKFILL_MIN_DATE=$FLOOR BACKFILL_WITH_ITEMS=true BACKFILL_SKIP_UNCHANGED=true BACKFILL_WINDOW_DAYS=1 BACKFILL_CHUNKS_PER_RUN=2 BACKFILL_PAGE_DELAY_MS=1200 BACKFILL_START_OFFSET_DAYS=3 \
         pncp_items scripts/backfill-procurements.ts --provider=PNCP 2>&1)
       echo "$out" | python3 -c "$summary" "histórico-itens PNCP:"
