@@ -16,7 +16,7 @@ Implementado:
 - ingestão redundante, paginada, idempotente, com retry, timeout, checkpoints e recuperação automática por fonte;
 - resultados homologados, fornecedores vencedores e preços históricos via endpoints oficiais do PNCP e Compras.gov.br;
 - deduplicação canônica e vínculo de múltiplas origens por licitação;
-- sincronização incremental via GitHub Actions;
+- coleta contínua (espelho do PNCP e do Compras.gov) em serviços systemd na VPS;
 - links temporários por processo, token armazenado somente como hash, chat do cliente e solicitações de documentos;
 - schema fiscal para autorização, metadados de certificados A1, documentos e fila de emissão;
 - headers de segurança, validação de entrada, autorização por função, testes, lint e build de produção.
@@ -43,16 +43,15 @@ npm run db:setup             # aplica as migrações e cria o usuário de teste
 npm run dev
 ```
 
-Com Supabase (produção): remova `NEXT_PUBLIC_DATA_BACKEND` do `.env.local`, preencha as chaves do projeto e aplique o esquema (veja "Publicar").
-
 Acesse [http://localhost:3000](http://localhost:3000).
 
-## Publicar (Supabase + Vercel)
+## Produção (VPS própria)
 
-1. **Banco**: rode `npm run db:bundle` e cole `supabase/schema-bundle.sql` no SQL Editor do projeto Supabase (ou use `npx supabase link --project-ref lciaajnqcvbuurajgmti` e `npx supabase db push --linked`).
-2. **Auth** (Supabase > Authentication > URL Configuration): defina *Site URL* com o domínio da Vercel e inclua `https://SEU-DOMINIO/auth/callback` em *Redirect URLs*.
-3. **Vercel**: importe o repositório (framework Next.js, detectado sozinho) e cadastre em Environment Variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `INTERNAL_SYNC_SECRET`, `APP_OWNER_EMAIL`, `NEXT_PUBLIC_APP_URL` e, se usar, `PORTAL_TRANSPARENCIA_API_KEY`. **Não** defina `NEXT_PUBLIC_DATA_BACKEND`.
-4. **Primeira carga** (com as variáveis de produção no ambiente): `npm run sync:geography`, `npm run sync:catalog` e `npm run sync:procurements:quick`.
+O sistema roda numa VPS (Ubuntu, Postgres 18, Node, Nginx), em modo de banco próprio (`NEXT_PUBLIC_DATA_BACKEND=local`). Vercel e Supabase não são mais usados.
+
+- Código em `/srv/nexo/app`, variáveis em `/srv/nexo/.env`, serviço `nexo-app` atrás do Nginx.
+- Publicar: gere o pacote com `git archive --format=tar.gz -o nexo.tar.gz HEAD`, envie para `/srv/nexo/release.tar.gz` e rode `/srv/nexo/bin/deploy.sh` (instala, compila, aplica migrações e troca a versão).
+- Backup diário do banco em `/var/backups/nexo` (7 dias).
 
 Comandos de qualidade:
 
@@ -65,18 +64,21 @@ npm run build
 
 ## Sincronização contínua
 
-O workflow `.github/workflows/sync-data.yml` executa o coletor e também aceita início manual. No repositório GitHub, cadastre estes Actions Secrets:
+Na VPS, a coleta roda em serviços systemd (`nexo-job@<tarefa>`, script `/srv/nexo/bin/job.sh`):
 
-- `SUPABASE_URL`: URL do projeto;
-- `SUPABASE_SECRET_KEY`: chave secreta do servidor, nunca a chave publicável.
+- `mirror-PNCP` e `mirror-COMPRAS_GOV`: espelho contínuo de ontem e hoje, todas as páginas; primeiro os cabeçalhos, depois os itens só do que é novo ou mudou (`SYNC_SKIP_UNCHANGED=true`);
+- `backfill-PNCP`, `backfill-COMPRAS_GOV` e `backfill-results`: carga histórica com retomada automática;
+- timers `recent-results` (5 min), `watchdog` (15 min), `daily` e `backup`.
 
-O PNCP tem prioridade e o Compras.gov funciona como redundância. A rotina consulta `/v1/modalidades` e percorre todas as modalidades ativas; se a tabela de domínio estiver temporariamente indisponível, usa o último conjunto oficial verificado no código. Cada fonte mantém checkpoint e estado próprios, e uma falha não cancela a outra. As APIs oficiais são HTTP paginadas, não streaming. O painel recebe as alterações do banco por Realtime após cada ciclo de coleta.
+As consultas ao PNCP passam por uma fila única (`flock`), porque o PNCP limita o IP com HTTP 429.
 
-O GitHub Actions executa uma varredura rápida das licitações a cada cinco minutos, sem itens, para capturar novidades com baixa latência. As modalidades são processadas de forma cadenciada e o cliente respeita `Retry-After` para evitar bloqueios HTTP 429. A base geográfica do IBGE é renovada diariamente. Enriquecimento de itens e cargas históricas são executados separadamente para não atrasar a descoberta de oportunidades.
+O PNCP tem prioridade e o Compras.gov funciona como redundância. A rotina consulta `/v1/modalidades` e percorre todas as modalidades ativas; se a tabela de domínio estiver temporariamente indisponível, usa o último conjunto oficial verificado no código. Cada fonte mantém checkpoint e estado próprios, e uma falha não cancela a outra. As APIs oficiais são HTTP paginadas, não streaming. O painel recebe as alterações do banco após cada ciclo de coleta.
 
-Em paralelo, a rotina `recent-results` busca resultados homologados, hidrata automaticamente contratações e itens ainda ausentes e alimenta concorrentes, vitórias e preços. O job `historical-results` retrocede em janelas de sete dias até 2021, enquanto o `sync-watchdog` verifica a saúde das fontes e recupera ciclos parados. Nenhum cursor avança deixando uma página parcialmente hidratada para trás.
+As modalidades são processadas de forma cadenciada e o cliente respeita `Retry-After` para evitar bloqueios HTTP 429. A base geográfica do IBGE é renovada diariamente. Enriquecimento de itens e cargas históricas são executados separadamente para não atrasar a descoberta de oportunidades.
 
-Além da atualização recente, o job diário `historical-backfill` mantém um cursor independente por fonte. Ele percorre desde os dados mais novos até `2021-01-01`, retoma exatamente a modalidade e a página pendentes e só avança após uma execução bem-sucedida. Ajuste `BACKFILL_MIN_DATE` se for necessário ampliar ou reduzir a cobertura histórica. PNCP e Compras.gov.br rodam em jobs independentes; a indisponibilidade de uma fonte não interrompe a outra.
+Em paralelo, a rotina `recent-results` busca resultados homologados, hidrata automaticamente contratações e itens ainda ausentes e alimenta concorrentes, vitórias e preços. A carga `backfill-results` retrocede em janelas de sete dias até 2021, enquanto o `sync-watchdog` verifica a saúde das fontes e recupera ciclos parados. Nenhum cursor avança deixando uma página parcialmente hidratada para trás.
+
+Além do espelho, a carga histórica mantém um cursor independente por fonte. Ele percorre desde os dados mais novos até `2021-01-01`, retoma exatamente a modalidade e a página pendentes e só avança após uma execução bem-sucedida. Ajuste `BACKFILL_MIN_DATE` se for necessário ampliar ou reduzir a cobertura histórica. PNCP e Compras.gov.br rodam em serviços independentes; a indisponibilidade de uma fonte não interrompe a outra.
 
 Primeira carga rápida, sem itens:
 
@@ -120,13 +122,9 @@ node --env-file=.env.local --conditions=react-server --import tsx scripts/sync-g
 
 As credenciais do Conecta usam apenas variáveis de servidor `CONNECTA_GOV_*`. Em hospedagens sem IP de saída fixo, execute o provider credenciado por um worker com IP estático autorizado e mantenha a BrasilAPI como contingência.
 
-## GitHub e hospedagem
-
-O código não depende de configuração proprietária da Vercel. Depois de enviar o repositório ao GitHub, importe-o na hospedagem escolhida e copie as variáveis de `.env.example`. A chave `SUPABASE_SECRET_KEY` é exclusiva do ambiente de servidor.
-
 ## Banco e segurança
 
-As migrações ficam em `supabase/migrations`. Dados públicos são compartilhados; empresas, oportunidades, favoritos, portal do cliente e dados fiscais são isolados por tenant com RLS. O portal público acessa somente funções com DTO reduzido e token SHA-256 válido e temporário.
+As migrações ficam em `supabase/migrations` (nome histórico; são aplicadas por `scripts/local-db-setup.ts`). Dados públicos são compartilhados; empresas, oportunidades, favoritos, portal do cliente e dados fiscais são isolados por tenant com RLS. O portal público acessa somente funções com DTO reduzido e token SHA-256 válido e temporário.
 
 Certificados digitais e senhas de PFX não pertencem ao Postgres. O banco guarda apenas referência do cofre, fingerprint e metadados. Consulte `docs/architecture.md` e `docs/fiscal-security.md` antes de implementar o worker fiscal.
 
