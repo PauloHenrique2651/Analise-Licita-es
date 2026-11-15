@@ -48,6 +48,7 @@ export const pncpConnector: ProcurementProvider = {
     url.searchParams.set("pagina", "1");
     url.searchParams.set("tamanhoPagina", "500");
     const raw = await fetchJson<unknown>(url, { provider: "PNCP", timeoutMs: 15_000, retries: 1, cacheSeconds: 3600 });
+    if (raw === null) return []; // 204: a contratação não tem itens publicados
     const items = pncpItemsResponseSchema.parse(raw) as PncpItemDto[];
     return items.map((item) => mapPncpItem(item, procurement.pncpId ?? procurement.externalId));
   },
@@ -59,6 +60,7 @@ export const pncpConnector: ProcurementProvider = {
     for (const item of items) {
       const url = new URL(`${env.PNCP_SERVICE_BASE_URL}/v1/orgaos/${procurement.agencyCnpj}/compras/${procurement.purchaseYear}/${procurement.sequenceNumber}/itens/${item.itemNumber}/resultados`);
       const raw = await fetchJson<unknown>(url, { provider: "PNCP", timeoutMs: 15_000, retries: 2, cacheSeconds: 0 });
+      if (raw === null) continue; // 204: item sem resultado
       const parsed = pncpResultsResponseSchema.parse(raw) as PncpResultDto[];
       results.push(...parsed.map((result) => mapPncpResult(result, procurement.pncpId ?? procurement.externalId, url.toString())));
     }

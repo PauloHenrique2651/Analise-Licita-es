@@ -33,7 +33,7 @@ async function main() {
   const providerInput = process.argv.find((value) => value.startsWith("--provider="))?.split("=")[1] ?? process.env.BACKFILL_PROVIDER ?? "PNCP";
   if (providerInput !== "PNCP" && providerInput !== "COMPRAS_GOV") throw new Error("BACKFILL_PROVIDER deve ser PNCP ou COMPRAS_GOV.");
   const provider = providerInput as ProcurementApiProviderSlug;
-  const stateKey = `BACKFILL_${provider}`;
+  const stateKey = `BACKFILL_${provider}${process.env.BACKFILL_STATE_SUFFIX ?? ""}`;
   const client = createAdminClient();
   const codes = await modalities();
   const floor = process.env.BACKFILL_MIN_DATE ?? "2021-01-01";
@@ -42,9 +42,10 @@ async function main() {
   const maxPages = boundedNumber(process.env.BACKFILL_MAX_PAGES, 25, 1, 25);
   const pageSize = boundedNumber(process.env.BACKFILL_PAGE_SIZE, provider === "PNCP" ? 50 : 250, 10, provider === "PNCP" ? 50 : 500);
   const withItems = process.env.BACKFILL_WITH_ITEMS === "true";
+  const skipUnchanged = process.env.BACKFILL_SKIP_UNCHANGED === "true";
   const pageDelayMs = boundedNumber(process.env.BACKFILL_PAGE_DELAY_MS, provider === "PNCP" ? 1_500 : 300, 0, 10_000);
   const { data: stored } = await client.from("procurement_sync_state").select("metadata").eq("provider", stateKey).maybeSingle();
-  const initialEnd = addDays(isoDay(new Date()), -3);
+  const initialEnd = addDays(isoDay(new Date()), -Number(process.env.BACKFILL_START_OFFSET_DAYS ?? 3));
   const initialStart = addDays(initialEnd, -(windowDays - 1));
   let cursor: BackfillCursor = stored?.metadata && typeof stored.metadata === "object"
     ? stored.metadata as BackfillCursor
@@ -66,6 +67,7 @@ async function main() {
       maxPages,
       pageSize,
       withItems,
+      skipUnchanged,
       refreshAnalytics: false,
       pageDelayMs,
     });
