@@ -1643,3 +1643,11 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
 @media (max-width: 720px) { .public-tabs button { min-width: 0; padding: 10px 6px; font-size: 13px; } .public-tabs .count-pill { white-space: nowrap; } }
 .picker-list button { touch-action: manipulation; min-height: 44px; }
 @media (max-width: 720px) { .generated-link > svg { display: none; } .generated-link input { font-size: 14px; } }
+
+/* Funil: cartão com remover */
+.funnel-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.funnel-card-head strong { min-width: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; line-height: 1.35; }
+.funnel-column article p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.icon-button.danger { color: var(--danger); flex-shrink: 0; min-width: 36px; min-height: 36px; }
+.icon-button.danger:hover { background: var(--danger-bg); }
+.management-list article > .icon-button.danger { margin-left: 8px; }

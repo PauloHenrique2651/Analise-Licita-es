@@ -468,26 +468,29 @@ export class ProcurementRepository {
   }
 }
 
+/** Campo de formulário em branco não é filtro: vira null (data vazia quebrava a busca com erro de conversão). */
+const blank = <T,>(value: T | null | undefined): T | null => (value === undefined || value === null || (typeof value === "string" && value.trim() === "") ? null : value);
+
 export function toSearchRpcParams(filters: ProcurementSearchFilters) {
   return {
-    p_text: filters.text ?? null,
-    p_state: filters.state ?? null,
-    p_city: filters.city ?? null,
-    p_agency: filters.agency ?? null,
-    p_agency_cnpj: filters.agencyCnpj ?? null,
-    p_modality: filters.modality ?? null,
-    p_source_code: filters.portal ?? null,
-    p_status: filters.status ?? null,
-    p_published_from: filters.publishedFrom ?? null,
-    p_published_to: filters.publishedTo ?? null,
-    p_proposal_until: filters.proposalUntil ?? null,
+    p_text: blank(filters.text),
+    p_state: blank(filters.state),
+    p_city: blank(filters.city),
+    p_agency: blank(filters.agency),
+    p_agency_cnpj: blank(filters.agencyCnpj),
+    p_modality: blank(filters.modality),
+    p_source_code: blank(filters.portal),
+    p_status: blank(filters.status),
+    p_published_from: blank(filters.publishedFrom),
+    p_published_to: blank(filters.publishedTo),
+    p_proposal_until: blank(filters.proposalUntil),
     p_min_value: filters.minValue ?? null,
     p_max_value: filters.maxValue ?? null,
     p_limit: Math.min(filters.limit ?? 50, 100),
     p_offset: Math.max(filters.offset ?? 0, 0),
-    p_dispute_mode: filters.disputeMode ?? null,
-    p_me_epp: filters.meEpp ?? null,
-    p_item_kind: filters.itemKind ?? null,
+    p_dispute_mode: blank(filters.disputeMode),
+    p_me_epp: blank(filters.meEpp),
+    p_item_kind: blank(filters.itemKind),
     p_open_only: filters.openOnly ?? false,
   };
 }
