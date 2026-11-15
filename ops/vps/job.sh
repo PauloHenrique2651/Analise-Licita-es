@@ -25,15 +25,19 @@ except Exception: print(sys.argv[1], t[-300:])'
 
 case "$1" in
   mirror-PNCP)
-    # Espelho: últimos 3 dias, todas as páginas. Fase 1 grava cabeçalhos (novidades em minutos); fase 2 busca itens do que é novo/mudou.
+    # Espelho em tempo real: só HOJE a cada ciclo (barato); ontem e anteontem só de vez em quando, porque já estão fechados.
+    # Assim a maior parte do orçamento de chamadas do PNCP fica para o histórico. Fase 1 = cabeçalhos; fase 2 = itens do que é novo/mudou.
+    cycle=0
     while true; do
-      SYNC_LOOKBACK_DAYS=3 SYNC_MAX_PAGES=500 SYNC_PAGE_SIZE=50 SYNC_WITH_ITEMS=false SYNC_SKIP_UNCHANGED=false \
-      SYNC_MODALITY_CONCURRENCY=1 SYNC_MODALITY_DELAY_MS=1500 SYNC_PAGE_DELAY_MS=1200 \
-        pncp_headers scripts/sync-procurements.ts --provider=PNCP 2>&1 | python3 -c "$summary" "espelho-cabecalhos:"
-      SYNC_LOOKBACK_DAYS=3 SYNC_MAX_PAGES=500 SYNC_PAGE_SIZE=50 SYNC_WITH_ITEMS=true SYNC_SKIP_UNCHANGED=true \
-      SYNC_MODALITY_CONCURRENCY=1 SYNC_MODALITY_DELAY_MS=1500 SYNC_PAGE_DELAY_MS=1200 \
-        pncp_items scripts/sync-procurements.ts --provider=PNCP 2>&1 | python3 -c "$summary" "espelho-itens:"
-      sleep 20
+      today=$(TZ=America/Sao_Paulo date +%F)
+      days="$today"
+      if [ $((cycle % 12)) -eq 0 ]; then days="$(TZ=America/Sao_Paulo date -d '-2 day' +%F) $(TZ=America/Sao_Paulo date -d '-1 day' +%F) $today"; fi
+      for day in $days; do
+        SYNC_MAX_PAGES=500 SYNC_PAGE_SIZE=50 SYNC_WITH_ITEMS=false SYNC_SKIP_UNCHANGED=false         SYNC_MODALITY_CONCURRENCY=1 SYNC_MODALITY_DELAY_MS=0 SYNC_PAGE_DELAY_MS=0           pncp_headers scripts/sync-procurements.ts --provider=PNCP --start=$day --end=$day 2>&1 | python3 -c "$summary" "espelho-cabecalhos $day:"
+        SYNC_MAX_PAGES=500 SYNC_PAGE_SIZE=50 SYNC_WITH_ITEMS=true SYNC_SKIP_UNCHANGED=true         SYNC_MODALITY_CONCURRENCY=1 SYNC_MODALITY_DELAY_MS=0 SYNC_PAGE_DELAY_MS=0           pncp_items scripts/sync-procurements.ts --provider=PNCP --start=$day --end=$day 2>&1 | python3 -c "$summary" "espelho-itens $day:"
+      done
+      cycle=$((cycle + 1))
+      sleep 30
     done ;;
   mirror-COMPRAS_GOV)
     while true; do
