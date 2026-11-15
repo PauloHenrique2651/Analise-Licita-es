@@ -20,12 +20,16 @@ export async function POST(request: NextRequest) {
     });
     if (isLocalBackend()) {
       const local = createLocalServerClient({
+        clientIp: request.headers.get("x-real-ip"),
         cookies: {
           get: (name) => request.cookies.get(name)?.value,
           set: (name, value, options) => { response.cookies.set(name, value, options); },
         },
       });
       const { error } = await local.auth.signInWithPassword(input);
+      if (error && (error as { status?: number }).status === 429) {
+        return NextResponse.json({ message: error.message }, { status: 429, headers: { "Cache-Control": "no-store" } });
+      }
       if (error) {
         return NextResponse.json({ message: "E-mail ou senha inválidos." }, { status: 401, headers: { "Cache-Control": "no-store" } });
       }

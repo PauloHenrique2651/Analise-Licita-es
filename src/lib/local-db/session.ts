@@ -8,6 +8,8 @@ export interface LocalTokenPayload {
   sub: string;
   email: string | null;
   purpose: "session" | "recovery";
+  /** Versão da sessão do usuário quando o token foi emitido (auth.users.session_version). */
+  sv?: number;
   exp: number;
 }
 

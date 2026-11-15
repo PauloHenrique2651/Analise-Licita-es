@@ -9,6 +9,7 @@ type PendingCookie = { name: string; value: string; options: Parameters<CookieAd
 export function localClientForRequest(request: NextRequest) {
   const pending: PendingCookie[] = [];
   const client = createLocalServerClient({
+    clientIp: request.headers.get("x-real-ip"),
     cookies: {
       get: (name) => request.cookies.get(name)?.value,
       set: (name, value, options) => { pending.push({ name, value, options }); },

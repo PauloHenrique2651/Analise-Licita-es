@@ -85,7 +85,9 @@ export class ProcurementRepository {
         ibge_code: cityCode,
         state_code: procurement.state,
         name: procurement.city,
-      }, { onConflict: "ibge_code" });
+      }, { onConflict: "ibge_code", ignoreDuplicates: true });
+      // Só cadastra o município se ainda não existir: o nome oficial vem do IBGE (sync-geography) e a grafia da fonte
+      // (geralmente em maiúsculas) não pode sobrescrevê-lo.
       if (cityError) throw cityError;
     }
     const { data, error } = await this.client.from("organizations").upsert({

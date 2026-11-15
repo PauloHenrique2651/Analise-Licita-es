@@ -15,6 +15,18 @@ const extensionByMime: Record<string, string> = {
 };
 
 const allowedMimeTypes = Object.keys(extensionByMime);
+const MAX_VERSIONS_PER_REQUEST = 10;
+
+/** Confere a assinatura do arquivo (bytes iniciais): o tipo informado pelo navegador pode ser falsificado. */
+function matchesSignature(bytes: Buffer, mime: string) {
+  const starts = (...sig: number[]) => sig.every((value, index) => bytes[index] === value);
+  if (mime === "application/pdf") return starts(0x25, 0x50, 0x44, 0x46); // %PDF
+  if (mime === "image/png") return starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+  if (mime === "image/jpeg") return starts(0xff, 0xd8, 0xff);
+  // docx/xlsx são pacotes ZIP
+  if (mime.startsWith("application/vnd.openxmlformats-officedocument.")) return starts(0x50, 0x4b, 0x03, 0x04);
+  return false;
+}
 
 async function ensureDocumentsBucket(supabase: ReturnType<typeof createAdminClient>) {
   const { data: bucket } = await supabase.storage.getBucket("client-documents");
@@ -53,7 +65,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     if (file.size > Number(documentRequest.max_size_bytes)) throw new Error("FILE_TOO_LARGE");
     if (!documentRequest.allowed_mime_types.includes(file.type) || !extensionByMime[file.type]) throw new Error("INVALID_FILE_TYPE");
 
+    const { count: versions } = await supabase.from("client_documents").select("id", { count: "exact", head: true }).eq("request_id", documentRequest.id);
+    if ((versions ?? 0) >= MAX_VERSIONS_PER_REQUEST) throw new Error("TOO_MANY_VERSIONS");
     const bytes = Buffer.from(await file.arrayBuffer());
+    if (!matchesSignature(bytes, file.type)) throw new Error("INVALID_FILE_TYPE");
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     uploadedPath = `${documentRequest.share_id}/${documentRequest.id}/${randomUUID()}.${extensionByMime[file.type]}`;
     const { error: uploadError } = await supabase.storage.from("client-documents").upload(uploadedPath, bytes, { contentType: file.type, upsert: false });
@@ -77,11 +92,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       try { await createAdminClient().storage.from("client-documents").remove([uploadedPath]); } catch { /* compensação sem ocultar o erro original */ }
     }
     const code = error instanceof Error ? error.message : "";
-    const status = code === "NOT_FOUND" ? 404 : code === "FILE_TOO_LARGE" ? 413 : code === "DOCUMENT_STORAGE_UNAVAILABLE" ? 503 : 400;
+    const status = code === "NOT_FOUND" ? 404 : code === "TOO_MANY_VERSIONS" ? 429 : code === "FILE_TOO_LARGE" ? 413 : code === "DOCUMENT_STORAGE_UNAVAILABLE" ? 503 : 400;
     const message = status === 404 ? "Solicitação inválida ou acesso expirado."
       : status === 413 ? "Arquivo maior que o limite solicitado."
       : status === 503 ? "O recebimento de documentos está indisponível no momento. Tente novamente em instantes."
-      : code === "INVALID_FILE_TYPE" ? "Tipo de arquivo não permitido."
+      : code === "INVALID_FILE_TYPE" ? "Tipo de arquivo não permitido ou arquivo corrompido."
+      : code === "TOO_MANY_VERSIONS" ? "Limite de versões enviadas para este documento. Fale com a equipe responsável."
       : "Não foi possível enviar o documento.";
     return NextResponse.json({ message }, { status, headers: { "Cache-Control": "no-store" } });
   }

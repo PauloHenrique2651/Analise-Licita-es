@@ -31,6 +31,9 @@ create table if not exists auth.users (
   updated_at timestamptz not null default now()
 );
 
+-- Versão da sessão: trocar a senha incrementa e derruba todas as sessões abertas daquele usuário.
+alter table auth.users add column if not exists session_version integer not null default 1;
+
 create or replace function auth.uid() returns uuid
 language sql stable as $$
   select nullif(coalesce(
@@ -93,9 +96,11 @@ end $$;
 
 -- Mesmo comportamento padrão do Supabase: objetos novos em public ficam acessíveis
 -- para os papéis da API; o RLS das migrações decide o que cada usuário enxerga.
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
-alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+-- O visitante (anon) não recebe nada por padrão; o RLS decide o que o usuário logado enxerga.
+-- Permissões finais ficam em local-db/security.sql, aplicado depois das migrações.
+alter default privileges in schema public grant all on tables to authenticated, service_role;
+alter default privileges in schema public grant all on sequences to authenticated, service_role;
+alter default privileges in schema public grant execute on functions to authenticated, service_role;
 
 create table if not exists local_meta.schema_migrations (
   version text primary key,

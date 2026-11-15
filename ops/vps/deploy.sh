@@ -11,7 +11,8 @@ rm -rf app.old; mv app app.old; mv app.new app
 tr -d '\r' < app/ops/vps/job.sh > bin/job.sh && chmod 755 bin/job.sh
 tr -d '\r' < app/ops/vps/deploy.sh > bin/deploy.sh.new && chmod 750 bin/deploy.sh.new && mv bin/deploy.sh.new bin/deploy.sh
 # Reinício em sequência: uma instância por vez, esperando responder, então o site nunca fica fora do ar.
-INSTANCES=$(systemctl list-unit-files 'nexo-app@*.service' --no-legend 2>/dev/null | awk '{print $1}' | grep -v '^nexo-app@.service$' || true)
+# Instâncias ativas (list-unit-files só mostra o modelo nexo-app@.service, não as instâncias)
+INSTANCES=$(systemctl list-units 'nexo-app@*.service' --all --no-legend --plain 2>/dev/null | awk '{print $1}' | grep -E '^nexo-app@[0-9]+\.service$' || true)
 if [ -n "$INSTANCES" ]; then
   for unit in $INSTANCES; do
     port=${unit#nexo-app@}; port=${port%.service}

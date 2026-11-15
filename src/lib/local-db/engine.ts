@@ -266,6 +266,10 @@ const REPLICA_TABLES = new Set([
   "catalog_items", "products", "categories", "brands", "manufacturers", "cities", "states", "sources",
   "market_summary", "product_market_summary", "organization_purchase_summary", "company_performance",
 ]);
+const RPC_ALLOWED: Record<"anon" | "authenticated", Set<string>> = {
+  anon: new Set(["get_public_portal_snapshot", "send_public_portal_message"]),
+  authenticated: new Set(["search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city", "get_public_portal_snapshot", "send_public_portal_message"]),
+};
 const REPLICA_RPCS = new Set(["search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city"]);
 
 async function execute(descriptor: QueryDescriptor, identity: DbIdentity): Promise<QueryResult> {
@@ -274,6 +278,11 @@ async function execute(descriptor: QueryDescriptor, identity: DbIdentity): Promi
   const target = descriptor.target;
 
   if (descriptor.kind === "rpc") {
+    // Usuários e visitantes só chamam as funções que o app usa; o resto (crypt, set_limit, recálculos pesados...) é negado
+    // aqui, antes do banco, além das permissões do próprio banco (local-db/security.sql).
+    if (identity.role !== "service_role" && !RPC_ALLOWED[identity.role].has(target)) {
+      return { data: null, count: null, status: 404, statusText: "Not Found", error: { message: "Função não disponível.", code: "PGRST202" } };
+    }
     const fn = schema.functions.get(target);
     if (!fn) throw new Error(`Função não encontrada: ${target}`);
     const args = Object.entries(descriptor.args ?? {}).filter(([, value]) => value !== undefined)
