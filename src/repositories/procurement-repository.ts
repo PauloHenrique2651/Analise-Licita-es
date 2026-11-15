@@ -136,6 +136,24 @@ export class ProcurementRepository {
     return productId;
   }
 
+  /** true quando a licitação já está no banco com a mesma data de atualização na fonte e com itens: dá para pular a busca de itens. */
+  async isUnchanged(procurement: NormalizedProcurement) {
+    const source = await this.getSource(procurement.source);
+    const { data } = await this.client
+      .from("procurement_sources")
+      .select("procurement_id, source_updated_at")
+      .eq("source_id", source.id)
+      .eq("external_id", procurement.externalId)
+      .maybeSingle();
+    if (!data?.procurement_id) return false;
+    const same = (data.source_updated_at ?? null) === null
+      ? !procurement.sourceUpdatedAt
+      : Boolean(procurement.sourceUpdatedAt) && new Date(data.source_updated_at as string).getTime() === new Date(procurement.sourceUpdatedAt!).getTime();
+    if (!same) return false;
+    const { count } = await this.client.from("procurement_items").select("id", { count: "exact", head: true }).eq("procurement_id", data.procurement_id);
+    return (count ?? 0) > 0;
+  }
+
   async save(procurement: NormalizedProcurement) {
     const source = await this.getSource(procurement.source);
     const organizationId = await this.upsertOrganization(procurement, source.id);

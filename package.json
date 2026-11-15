@@ -13,7 +13,7 @@
     "db:reset": "docker compose down -v && docker compose up -d && node --env-file-if-exists=.env.local --import tsx scripts/local-db-setup.ts",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src proxy.ts next.config.ts vitest.config.ts",
+    "lint": "eslint src next.config.ts vitest.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

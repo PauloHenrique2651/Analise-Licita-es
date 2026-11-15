@@ -19,6 +19,8 @@ export type ProcurementSyncInput = {
   startPage?: number;
   pageSize?: number;
   withItems?: boolean;
+  /** Modo espelho: pula licitações já gravadas que não mudaram na fonte (evita rebuscar itens a cada ciclo). */
+  skipUnchanged?: boolean;
   state?: string;
   cityIbgeCode?: string;
   refreshAnalytics?: boolean;
@@ -73,7 +75,7 @@ async function syncProvider(provider: ProcurementProvider, input: ProcurementSyn
   let inserted = 0;
   let updated = 0;
   let errors = 0;
-  const maxPages = Math.min(Math.max(input.maxPages ?? 2, 1), 25);
+  const maxPages = Math.min(Math.max(input.maxPages ?? 2, 1), 500);
   const lastAllowedPage = page + maxPages - 1;
 
   try {
@@ -92,6 +94,7 @@ async function syncProvider(provider: ProcurementProvider, input: ProcurementSyn
 
       for (const record of result.records) {
         try {
+          if (input.skipUnchanged && await repository.isUnchanged(record)) { processed += 1; continue; }
           let normalizedResults: NormalizedProcurementResult[] = [];
           if (input.withItems !== false && provider.fetchItems) {
             try {

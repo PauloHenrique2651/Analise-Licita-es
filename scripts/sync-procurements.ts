@@ -15,7 +15,7 @@ async function main() {
   const end = new Date();
   const lookbackDays = quick ? 1 : Math.max(1, Math.min(Number(process.env.SYNC_LOOKBACK_DAYS ?? 2), 30));
   const start = new Date(end.getTime() - lookbackDays * 86_400_000);
-  const maxPages = quick ? 1 : Math.max(1, Math.min(Number(process.env.SYNC_MAX_PAGES ?? 2), 25));
+  const maxPages = quick ? 1 : Math.max(1, Math.min(Number(process.env.SYNC_MAX_PAGES ?? 2), 500));
   const explicitStart = argument("start");
   const explicitEnd = argument("end");
   const configuredCodes = argument("modality") ?? process.env.SYNC_MODALITY_CODES;
@@ -54,6 +54,7 @@ async function main() {
         maxPages,
         pageSize,
         withItems,
+        skipUnchanged: process.env.SYNC_SKIP_UNCHANGED === "true",
         state: argument("state"),
         refreshAnalytics: false,
         pageDelayMs,
