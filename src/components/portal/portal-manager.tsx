@@ -35,6 +35,16 @@ function ProcurementPicker({ value, onChange }: { value: ProcurementOption | nul
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const request = useRef(0);
+  const root = useRef<HTMLDivElement>(null);
+
+  // Fecha ao tocar fora. Não usa onBlur: no Safari do iPhone o toque numa opção tira o foco do campo
+  // antes do clique, e a lista sumia sem selecionar.
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: PointerEvent) => { if (root.current && !root.current.contains(event.target as Node)) setOpen(false); };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
 
   useEffect(() => {
     if (value) return;
@@ -54,7 +64,7 @@ function ProcurementPicker({ value, onChange }: { value: ProcurementOption | nul
     return <div className="picker-selected"><div><strong>{value.controlNumber}</strong><p>{value.object}</p>{value.agency && <small>{value.agency}</small>}</div><button type="button" className="icon-button" onClick={() => { onChange(null); setQuery(""); setOpen(true); }} aria-label="Trocar processo"><X aria-hidden="true" /></button></div>;
   }
   const hint = query.trim().length > 0 && query.trim().length < 3 ? "Digite ao menos 3 caracteres." : !loading && options.length === 0 ? (query.trim() ? "Nenhum processo encontrado. Tente o número do controle PNCP ou outra palavra do objeto." : "Você ainda não tem oportunidades ou favoritos. Pesquise pelo número, objeto ou órgão.") : null;
-  return <div className="picker" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false); }}>
+  return <div className="picker" ref={root}>
     <div className="picker-input input-with-icon"><Search aria-hidden="true" />
       <input id="portal-procurement" role="combobox" aria-expanded={open} aria-controls="portal-procurement-list" aria-autocomplete="list" autoComplete="off"
         placeholder="Número do controle PNCP, objeto ou órgão" value={query} onFocus={() => setOpen(true)}
@@ -69,7 +79,7 @@ function ProcurementPicker({ value, onChange }: { value: ProcurementOption | nul
     </div>
     {open && <div className="picker-list" id="portal-procurement-list" role="listbox">
       {!query.trim() && options.length > 0 && <p className="picker-caption">Suas oportunidades e favoritos</p>}
-      {options.map((option, index) => <button type="button" role="option" aria-selected={index === active} key={option.id} className={index === active ? "active" : ""} onMouseEnter={() => setActive(index)} onClick={() => { onChange(option); setQuery(""); setOpen(false); }}>
+      {options.map((option, index) => <button type="button" role="option" aria-selected={index === active} key={option.id} className={index === active ? "active" : ""} onMouseEnter={() => setActive(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => { onChange(option); setQuery(""); setOpen(false); }}>
         <span><strong>{option.controlNumber}</strong>{originLabel[option.origin] && <em>{originLabel[option.origin]}</em>}</span>
         <p>{option.object}</p>{option.agency && <small>{option.agency}</small>}
       </button>)}
@@ -113,7 +123,7 @@ export function PortalManager({ initialShares }: { initialShares: Share[] }) {
 
   async function createShare(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!procurement) return feedback(null, "Escolha o processo que será compartilhado.");
+    if (!procurement) return feedback(null, "Toque em um processo da lista de resultados para selecioná-lo.");
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     setPending("create"); feedback(null); setGeneratedUrl(null);

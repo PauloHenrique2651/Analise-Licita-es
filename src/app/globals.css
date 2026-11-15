@@ -1641,3 +1641,4 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
 .request-list article > div > .status-badge { display: flex; }
 .file-choose span { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 720px) { .public-tabs button { min-width: 0; padding: 10px 6px; font-size: 13px; } .public-tabs .count-pill { white-space: nowrap; } }
+.picker-list button { touch-action: manipulation; min-height: 44px; }
