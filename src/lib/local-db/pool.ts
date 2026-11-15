@@ -79,7 +79,9 @@ const REPLICA_UNAVAILABLE = /ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|termina
  * `options.replica`: consulta só de leitura sobre dados coletados, que pode ser atendida por uma réplica.
  */
 export async function withIdentity<T>(identity: DbIdentity, work: (client: PoolClient) => Promise<T>, options: { replica?: boolean } = {}) {
-  if (options.replica) {
+  // Só consultas de usuários (anon/authenticated). A coleta e tarefas administrativas (service_role) leem para depois gravar
+  // e precisam enxergar o que acabaram de escrever, então vão sempre ao primário.
+  if (options.replica && identity.role !== "service_role") {
     const replica = pickReadReplica();
     if (replica) {
       try {
