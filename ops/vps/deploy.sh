@@ -8,8 +8,8 @@ tar -xzf release.tar.gz -C app.new && chown -R nexo:nexo app.new
 sudo -u nexo -H bash -c "cd /srv/nexo/app.new && npm ci --no-audit --no-fund --loglevel=error && set -a && . /srv/nexo/.env && set +a && npx next build >/tmp/nexo-build.log 2>&1 || { tail -30 /tmp/nexo-build.log; exit 1; }"
 sudo -u nexo -H bash -c "cd /srv/nexo/app.new && node --env-file=/srv/nexo/.env --import tsx scripts/local-db-setup.ts"
 rm -rf app.old; mv app app.old; mv app.new app
-install -m 755 app/ops/vps/job.sh bin/job.sh
-install -m 750 app/ops/vps/deploy.sh bin/deploy.sh
+tr -d '\r' < app/ops/vps/job.sh > bin/job.sh && chmod 755 bin/job.sh
+tr -d '\r' < app/ops/vps/deploy.sh > bin/deploy.sh.new && chmod 750 bin/deploy.sh.new && mv bin/deploy.sh.new bin/deploy.sh
 systemctl restart nexo-app
 rm -f release.tar.gz
 echo "versão publicada"
