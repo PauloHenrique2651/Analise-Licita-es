@@ -131,12 +131,7 @@ for i in $(seq 1 "$INSTANCES"); do PORTS="$PORTS $((3000 + i))"; done
 } > /etc/nginx/conf.d/10-nexo-upstream.conf
 sed -i 's#proxy_pass http://127.0.0.1:3000;#proxy_pass http://nexo_app;#; s#proxy_set_header Connection "upgrade";#proxy_set_header Connection "";#' /etc/nginx/snippets/nexo-proxy.conf
 grep -q "proxy_next_upstream" /etc/nginx/snippets/nexo-proxy.conf || printf 'proxy_next_upstream error timeout http_502 http_503;\nproxy_next_upstream_tries 2;\n' >> /etc/nginx/snippets/nexo-proxy.conf
-# arquivos estáticos do Next: cache longo
-cat > /etc/nginx/conf.d/20-nexo-cache.conf <<'EOF'
-gzip on;
-gzip_types text/css application/javascript application/json image/svg+xml;
-gzip_min_length 1024;
-EOF
+rm -f /etc/nginx/conf.d/20-nexo-cache.conf   # o gzip já vem ligado no nginx.conf
 systemctl daemon-reload
 for p in $PORTS; do systemctl enable "nexo-app@$p" >/dev/null 2>&1; systemctl restart "nexo-app@$p"; done
 sleep 5
