@@ -23,7 +23,7 @@ const modules: Record<string, { title: string; description: string; search?: str
 
 const connectedModules = new Set(["produtos", "empresas", "concorrentes", "precos", "orgaos", "estados", "licitacoes", "pesquisa"]);
 
-type ModuleSearchParams = { q?: string; uf?: string; city?: string; agency?: string; cnpj?: string; modality?: string; portal?: string; status?: string; from?: string; to?: string; proposalUntil?: string; minValue?: string; maxValue?: string; page?: string; dispute?: string; meEpp?: string; kind?: string; open?: string };
+type ModuleSearchParams = { q?: string; uf?: string; city?: string; municipio?: string; agency?: string; cnpj?: string; modality?: string; portal?: string; status?: string; from?: string; to?: string; proposalUntil?: string; minValue?: string; maxValue?: string; page?: string; dispute?: string; meEpp?: string; kind?: string; open?: string };
 
 const MEEPP_VALUES = new Set(["exclusiva", "com_beneficio", "sem"]);
 
@@ -37,6 +37,7 @@ export default async function ModulePage({ params, searchParams }: { params: Pro
     const filters = {
       state: values.uf,
       city: values.city,
+      cityIbge: values.municipio && /^\d{7}$/.test(values.municipio) ? values.municipio : undefined,
       agency: values.agency,
       agencyCnpj: values.cnpj,
       modality: values.modality,

@@ -8,6 +8,7 @@ const querySchema = z.object({
   text: z.string().trim().max(120).optional(),
   state: z.string().trim().length(2).optional(),
   city: z.string().trim().max(120).optional(),
+  cityIbge: z.string().trim().regex(/^\d{7}$/).optional(),
   agency: z.string().trim().max(160).optional(),
   agencyCnpj: z.string().trim().max(18).optional(),
   modality: z.string().trim().max(80).optional(),

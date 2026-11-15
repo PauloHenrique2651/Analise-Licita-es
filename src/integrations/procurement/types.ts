@@ -112,6 +112,8 @@ export type ProcurementSearchFilters = {
   text?: string;
   state?: string;
   city?: string;
+  /** Município por código IBGE (exato). Preferir a `city` (texto livre). */
+  cityIbge?: string;
   agency?: string;
   agencyCnpj?: string;
   modality?: string;

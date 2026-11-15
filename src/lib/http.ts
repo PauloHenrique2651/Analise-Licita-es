@@ -1,4 +1,5 @@
 import "server-only";
+import { sharedCache } from "@/lib/api-cache";
 import { backoffPncp, waitForPncpSlot } from "@/lib/pncp-throttle";
 
 export class ProviderError extends Error {
@@ -16,10 +17,19 @@ type FetchOptions = {
   timeoutMs?: number;
   retries?: number;
   cacheSeconds?: number;
+  /** Cache compartilhado entre usuários e instâncias (Postgres), com resposta antiga como reserva se a API cair. */
+  sharedCacheSeconds?: number;
   headers?: HeadersInit;
 };
 
 export async function fetchJson<T>(url: URL, options: FetchOptions): Promise<T> {
+  if (options.sharedCacheSeconds) {
+    return sharedCache<T>(`${options.provider}:${url.toString()}`, options.sharedCacheSeconds, () => fetchJsonUncached<T>(url, options));
+  }
+  return fetchJsonUncached<T>(url, options);
+}
+
+async function fetchJsonUncached<T>(url: URL, options: FetchOptions): Promise<T> {
   const retries = options.retries ?? 2;
   let lastError: unknown;
 

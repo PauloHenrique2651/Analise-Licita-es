@@ -45,7 +45,7 @@ export const comprasGovProvider = {
     if (query.to) url.searchParams.set("dataCompraFim", query.to);
     url.searchParams.set("pagina", String(query.page));
     url.searchParams.set("tamanhoPagina", "500");
-    const response = await fetchJson<unknown>(url, { provider: "COMPRAS_GOV", cacheSeconds: 21_600, retries: 2, timeoutMs: 45_000 });
+    const response = await fetchJson<unknown>(url, { provider: "COMPRAS_GOV", cacheSeconds: 21_600, sharedCacheSeconds: 21_600, retries: 2, timeoutMs: 45_000 });
     return genericPageSchema.parse(response);
   },
 
@@ -58,6 +58,7 @@ export const comprasGovProvider = {
     const response = await fetchJson<unknown>(url, {
       provider: "COMPRAS_GOV",
       cacheSeconds: 86_400,
+      sharedCacheSeconds: 86_400,
       retries: 2,
     });
     return genericPageSchema.parse(response);
@@ -73,6 +74,7 @@ export const comprasGovProvider = {
     const response = await fetchJson<unknown>(url, {
       provider: "COMPRAS_GOV",
       cacheSeconds: 21_600,
+      sharedCacheSeconds: 21_600,
       retries: 2,
     });
     return genericPageSchema.parse(response);

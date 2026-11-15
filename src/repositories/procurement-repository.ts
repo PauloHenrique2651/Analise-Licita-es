@@ -492,5 +492,6 @@ export function toSearchRpcParams(filters: ProcurementSearchFilters) {
     p_me_epp: blank(filters.meEpp),
     p_item_kind: blank(filters.itemKind),
     p_open_only: filters.openOnly ?? false,
+    p_city_ibge: blank(filters.cityIbge),
   };
 }

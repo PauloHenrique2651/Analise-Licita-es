@@ -257,6 +257,17 @@ function finalize(descriptor: QueryDescriptor, rows: unknown[] | null, count: nu
   return { data: rows, error: null, count, status, statusText: "OK" };
 }
 
+/**
+ * Só dados coletados das fontes públicas (mudam por sincronização, toleram segundos de atraso) vão para a réplica.
+ * Dados da empresa (oportunidades, links do portal, mensagens, documentos) ficam no primário: quem grava precisa ler o que gravou.
+ */
+const REPLICA_TABLES = new Set([
+  "procurements", "procurement_items", "procurement_sources", "organizations", "results", "suppliers", "price_records",
+  "catalog_items", "products", "categories", "brands", "manufacturers", "cities", "states", "sources",
+  "market_summary", "product_market_summary", "organization_purchase_summary", "company_performance",
+]);
+const REPLICA_RPCS = new Set(["search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city"]);
+
 async function execute(descriptor: QueryDescriptor, identity: DbIdentity): Promise<QueryResult> {
   const schema = await getSchema();
   const ctx = new SqlContext(schema);
@@ -268,6 +279,7 @@ async function execute(descriptor: QueryDescriptor, identity: DbIdentity): Promi
     const args = Object.entries(descriptor.args ?? {}).filter(([, value]) => value !== undefined)
       .map(([name, value]) => `${ident(name)} => ${ctx.param(typeof value === "object" && value !== null && !Array.isArray(value) ? JSON.stringify(value) : value)}`);
     const call = `public.${ident(target)}(${args.join(", ")})`;
+    const replica = REPLICA_RPCS.has(target);
     return withIdentity(identity, async (client) => {
       if (fn.returnsSet || fn.composite) {
         const result = await client.query<{ r: unknown }>(`select to_jsonb(_r) as r from ${call} _r`, ctx.params);
@@ -277,7 +289,7 @@ async function execute(descriptor: QueryDescriptor, identity: DbIdentity): Promi
       }
       const result = await client.query<{ r: unknown }>(`select ${call} as r`, ctx.params);
       return { data: fn.isVoid ? null : result.rows[0]?.r ?? null, error: null, count: null, status: 200, statusText: "OK" };
-    });
+    }, { replica });
   }
 
   const filters = groupFilters(descriptor.filters);
@@ -295,7 +307,7 @@ async function execute(descriptor: QueryDescriptor, identity: DbIdentity): Promi
       if (descriptor.head) return finalize({ ...descriptor, single: undefined }, null, count);
       const result = await client.query<{ r: unknown }>(dataSql, ctx.params);
       return finalize(descriptor, result.rows.map((item) => item.r), count);
-    });
+    }, { replica: REPLICA_TABLES.has(target) });
   }
 
   const columnTypes = schema.columns.get(target);
