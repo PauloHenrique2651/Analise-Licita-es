@@ -4,7 +4,8 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { Client } from "pg";
 
-const databaseUrl = process.env.LOCAL_DATABASE_URL;
+// Migrações usam a conexão direta (sem PgBouncer) quando LOCAL_DATABASE_ADMIN_URL existe.
+const databaseUrl = process.env.LOCAL_DATABASE_ADMIN_URL ?? process.env.LOCAL_DATABASE_URL;
 if (!databaseUrl) {
   console.error("Defina LOCAL_DATABASE_URL no .env.local.");
   process.exit(1);

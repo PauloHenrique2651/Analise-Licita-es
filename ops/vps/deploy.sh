@@ -10,6 +10,16 @@ sudo -u nexo -H bash -c "cd /srv/nexo/app.new && node --env-file=/srv/nexo/.env 
 rm -rf app.old; mv app app.old; mv app.new app
 tr -d '\r' < app/ops/vps/job.sh > bin/job.sh && chmod 755 bin/job.sh
 tr -d '\r' < app/ops/vps/deploy.sh > bin/deploy.sh.new && chmod 750 bin/deploy.sh.new && mv bin/deploy.sh.new bin/deploy.sh
-systemctl restart nexo-app
+# Reinício em sequência: uma instância por vez, esperando responder, então o site nunca fica fora do ar.
+INSTANCES=$(systemctl list-unit-files 'nexo-app@*.service' --no-legend 2>/dev/null | awk '{print $1}' | grep -v '^nexo-app@.service$' || true)
+if [ -n "$INSTANCES" ]; then
+  for unit in $INSTANCES; do
+    port=${unit#nexo-app@}; port=${port%.service}
+    systemctl restart "$unit"
+    for i in $(seq 1 40); do [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$port/login)" = 200 ] && break; sleep 1; done
+  done
+else
+  systemctl restart nexo-app
+fi
 rm -f release.tar.gz
 echo "versão publicada"
