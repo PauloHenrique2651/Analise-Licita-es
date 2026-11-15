@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Preenchimento histórico em laço, retomável (o cursor fica em procurement_sync_state).
 # Uso: bash scripts/backfill-loop.sh PNCP|COMPRAS_GOV [env-file]
-# Variáveis úteis: BACKFILL_MIN_DATE (piso, padrão 2026-10-15), BACKFILL_WITH_ITEMS (padrão true).
+# Variáveis úteis: BACKFILL_MIN_DATE (piso, padrão 2025-11-14), BACKFILL_WITH_ITEMS (padrão true).
 provider="${1:-PNCP}"
 envfile="${2:-.env.production.local}"
-export BACKFILL_MIN_DATE="${BACKFILL_MIN_DATE:-2026-10-15}"
+export BACKFILL_MIN_DATE="${BACKFILL_MIN_DATE:-2025-11-14}"
 export BACKFILL_WITH_ITEMS="${BACKFILL_WITH_ITEMS:-true}"
 export BACKFILL_WINDOW_DAYS="${BACKFILL_WINDOW_DAYS:-1}"
 export BACKFILL_CHUNKS_PER_RUN="${BACKFILL_CHUNKS_PER_RUN:-12}"
