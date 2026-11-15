@@ -3,6 +3,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertSameOrigin, requireUser } from "@/lib/security";
 
+// Endereço público do sistema. Atrás do Nginx, request.url traz o endereço interno (localhost:3000),
+// então vale a URL configurada; sem ela, o host e o protocolo repassados pelo proxy.
+function publicOrigin(request: Request) {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "");
+  if (configured && !/\/\/(localhost|127\.0\.0\.1)(:|$)/.test(configured)) return configured;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") ?? new URL(request.url).protocol.replace(":", "");
+  return host ? `${proto}://${host}` : new URL(request.url).origin;
+}
+
 const createSchema = z.object({
   procurementId: z.string().uuid(),
   expiresInDays: z.number().int().min(1).max(30).default(7),
@@ -27,7 +37,7 @@ export async function POST(request: Request) {
       created_by: user.id,
     }).select("id, expires_at").single();
     if (error) throw error;
-    const base = new URL(request.url).origin;
+    const base = publicOrigin(request);
     return NextResponse.json({ data: { id: data.id, expiresAt: data.expires_at, url: `${base}/p/${token}` } }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const unauthorized = error instanceof Error && ["UNAUTHORIZED", "AUTH_NOT_CONFIGURED"].includes(error.message);

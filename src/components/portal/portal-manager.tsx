@@ -136,7 +136,17 @@ export function PortalManager({ initialShares }: { initialShares: Share[] }) {
   }
   async function copyLink() {
     if (!generatedUrl) return;
-    try { await navigator.clipboard.writeText(generatedUrl); feedback("Link copiado."); } catch { feedback(null, "Não foi possível copiar. Selecione o link e copie manualmente."); }
+    // A API de área de transferência só existe com HTTPS; em HTTP usa a cópia clássica pelo campo selecionado.
+    try {
+      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(generatedUrl);
+      else {
+        const input = document.getElementById("generated-link") as HTMLInputElement | null;
+        if (!input) throw new Error("no-input");
+        input.focus(); input.select(); input.setSelectionRange(0, generatedUrl.length);
+        if (!document.execCommand("copy")) throw new Error("copy-failed");
+      }
+      feedback("Link copiado. Cole no WhatsApp ou e-mail do cliente.");
+    } catch { feedback(null, "Não foi possível copiar. Toque no link, selecione tudo e copie."); }
   }
   async function revoke(share: Share) {
     if (!window.confirm(`Revogar o acesso de ${share.clientName}? O link para de funcionar na hora.`)) return;
