@@ -8,9 +8,9 @@ FLOOR=${NEXO_FLOOR:-2025-11-14}   # carga histórica: 12 meses
 
 # O diretório do app é trocado a cada deploy, então entra nele a cada chamada (não só no início).
 run()   { (cd "$APP" && node --env-file=/srv/nexo/.env --conditions=react-server --import tsx "$@"); }
-# O PNCP limita por IP (HTTP 429). Duas filas: cabeçalhos (rápido) e itens (pesado e instável) não se bloqueiam entre si.
-pncp_headers() { flock -w 1800 /srv/nexo/locks/pncp-headers.lock bash -c 'cd /srv/nexo/app && node --env-file=/srv/nexo/.env --conditions=react-server --import tsx "$@"' _ "$@"; }
-pncp_items()   { flock -w 1800 /srv/nexo/locks/pncp-items.lock   bash -c 'cd /srv/nexo/app && node --env-file=/srv/nexo/.env --conditions=react-server --import tsx "$@"' _ "$@"; }
+# O PNCP limita por IP (HTTP 429): o limitador compartilhado em src/lib/pncp-throttle.ts regula todas as chamadas, de todos os serviços.
+pncp_headers() { run "$@"; }
+pncp_items()   { run "$@"; }
 
 summary='import sys,json
 t=sys.stdin.read()

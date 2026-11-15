@@ -1,4 +1,5 @@
 import "server-only";
+import { waitForPncpSlot } from "@/lib/pncp-throttle";
 
 export class ProviderError extends Error {
   constructor(
@@ -24,6 +25,7 @@ export async function fetchJson<T>(url: URL, options: FetchOptions): Promise<T> 
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
+      if (options.provider === "PNCP") await waitForPncpSlot();
       const response = await fetch(url, {
         headers: {
           Accept: "application/json",
