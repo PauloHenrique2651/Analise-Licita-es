@@ -1,5 +1,5 @@
 import "server-only";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { runQuery } from "@/lib/local-db/engine";
 import { getPool, type DbIdentity } from "@/lib/local-db/pool";
@@ -211,6 +211,16 @@ export function createLocalServerClient(options: LocalClientOptions = {}) {
               [bucket, objectName, JSON.stringify({ mimetype: uploadOptions.contentType ?? null })],
             );
             return { data: { path: objectName, fullPath: `${bucket}/${objectName}` }, error: null };
+          } catch (error) {
+            return { data: null, error: error instanceof Error ? error : new Error(String(error)) };
+          }
+        },
+        async download(objectName: string) {
+          try {
+            const bytes = await readFile(objectPath(bucket, objectName));
+            const { rows } = await getPool().query("select metadata from storage.objects where bucket_id = $1 and name = $2", [bucket, objectName]);
+            const type = (rows[0]?.metadata as { mimetype?: string } | undefined)?.mimetype ?? "application/octet-stream";
+            return { data: new Blob([new Uint8Array(bytes)], { type }), error: null };
           } catch (error) {
             return { data: null, error: error instanceof Error ? error : new Error(String(error)) };
           }
