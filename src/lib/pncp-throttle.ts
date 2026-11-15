@@ -6,7 +6,7 @@ import { getPool } from "@/lib/local-db/pool";
  * Limitador compartilhado entre TODOS os processos de coleta (espelho, histórico, itens, watchdog).
  * O PNCP limita por IP (HTTP 429); sem isso, vários processos somados estouram o limite mesmo que cada um seja educado.
  * Cada chamada reserva um horário no banco (linha travada, atômico entre processos) e espera a sua vez.
- * Só atua no backend próprio (VPS). Intervalo: PNCP_MIN_INTERVAL_MS (padrão 700 ms ≈ 1,4 chamada/s no total).
+ * Só atua no backend próprio (VPS). Intervalo: PNCP_MIN_INTERVAL_MS (padrão 1800 ms ≈ 0,55 chamada/s no total; medido: 1 chamada/s é bloqueada após ~7, 1 a cada 2 s passa sem erro).
  */
 let prepared: Promise<void> | null = null;
 
@@ -22,7 +22,7 @@ function prepare() {
 
 export async function waitForPncpSlot() {
   if (!isLocalBackend()) return;
-  const interval = Math.max(100, Math.min(Number(process.env.PNCP_MIN_INTERVAL_MS ?? 700), 10_000));
+  const interval = Math.max(100, Math.min(Number(process.env.PNCP_MIN_INTERVAL_MS ?? 1800), 10_000));
   await prepare();
   const { rows } = await getPool().query<{ wait_ms: number }>(
     `with slot as (select greatest(now(), next_at) as at from local_meta.rate_limit where key = 'pncp' for update)
@@ -33,4 +33,14 @@ export async function waitForPncpSlot() {
   );
   const waitMs = Number(rows[0]?.wait_ms ?? 0);
   if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+}
+
+/** Recebeu 429: empurra o próximo horário para todos os processos, que pausam juntos. */
+export async function backoffPncp(ms = 60_000) {
+  if (!isLocalBackend()) return;
+  await prepare();
+  await getPool().query(
+    "update local_meta.rate_limit set next_at = greatest(next_at, now() + ($1::int * interval '1 millisecond')) where key = 'pncp'",
+    [ms],
+  );
 }

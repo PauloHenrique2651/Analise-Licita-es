@@ -1,5 +1,5 @@
 import "server-only";
-import { waitForPncpSlot } from "@/lib/pncp-throttle";
+import { backoffPncp, waitForPncpSlot } from "@/lib/pncp-throttle";
 
 export class ProviderError extends Error {
   constructor(
@@ -37,6 +37,7 @@ export async function fetchJson<T>(url: URL, options: FetchOptions): Promise<T> 
         next: { revalidate: options.cacheSeconds ?? 900 },
       });
       if (!response.ok) {
+        if (response.status === 429 && options.provider === "PNCP") await backoffPncp(60_000);
         const retryable = response.status === 429 || response.status >= 500;
         if (retryable && attempt < retries) {
           const retryAfter = response.headers.get("retry-after");
