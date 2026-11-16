@@ -82,6 +82,7 @@ case "$1" in
       sleep 10
     done ;;
   groups)             run scripts/build-product-groups.ts ;;   # agrupa itens equivalentes por produto/nicho (incremental)
+  groups-reclassify)  run scripts/build-product-groups.ts --reclassify ;;   # reaplica nichos e nomes sem refazer o agrupamento
   recent-results)     RESULT_SYNC_LOOKBACK_DAYS=30 RESULT_SYNC_MAX_PAGES=4 RESULT_SYNC_PAGE_SIZE=250 RESULT_SYNC_HYDRATE_LIMIT=40 RESULT_SYNC_PAGE_DELAY_MS=300 run scripts/sync-procurement-results.ts ;;
   watchdog)           SYNC_WATCHDOG_STALE_MINUTES=30 pncp_headers scripts/sync-watchdog.ts ;;
   daily)

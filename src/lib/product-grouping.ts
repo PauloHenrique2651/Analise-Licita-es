@@ -69,6 +69,28 @@ function headPhrase(description: string) {
   return first.trim();
 }
 
+/** Rótulos de atributo que sobram no fim do nome ("Fita Adesiva material", "Cesto Lixo tipo"). */
+const ATTRIBUTE_LABELS = new Set([
+  "material", "tipo", "tamanho", "modelo", "aplicacao", "caracteristicas", "caracteristica", "adicionais", "aspecto", "fisico", "composicao",
+  "capacidade", "dosagem", "concentracao", "especie", "tensao", "nominal", "potencia", "cor", "cores", "espessura", "formato", "apresentacao",
+  "finalidade", "uso", "qualidade", "base", "nome", "descricao", "medida", "medidas", "dimensoes", "acabamento",
+]);
+
+/** Nome para exibir: sem código na frente, sem rótulos de atributo no fim e sem a mesma frase repetida. */
+export function displayName(raw: string) {
+  const text = raw.replace(/\s+/g, " ").trim().replace(/^\d+\s*[-–]\s*/, "");
+  let tokens = text.split(" ").filter(Boolean);
+  // Frase repetida: "Caixa D'Água Caixa D'Água", "Abraçadeira-abracadeira", "Polvilho azedo polvilho azedo"
+  const parts = text.split(/[\s-]+/).filter(Boolean);
+  const half = parts.length / 2;
+  if (Number.isInteger(half) && half >= 1 && fold(parts.slice(0, half).join(" ")) === fold(parts.slice(half).join(" "))) tokens = parts.slice(0, half);
+  while (tokens.length > 1 && ATTRIBUTE_LABELS.has(fold(tokens[tokens.length - 1]).replace(/[^a-z]/g, ""))) tokens.pop();
+  const cleaned = tokens.join(" ").replace(/[.*,;:\s]+$/g, "").trim();
+  if (!cleaned) return raw.slice(0, 90);
+  const shown = cleaned.slice(0, 90);
+  return shown === shown.toUpperCase() ? shown.charAt(0) + shown.slice(1).toLowerCase() : shown;
+}
+
 export interface HeadKey {
   /** Chave de comparação: palavras principais, sem acento/plural, em ordem alfabética (a ordem das palavras não importa). */
   key: string;
@@ -96,13 +118,11 @@ export function headKey(description: string): HeadKey | null {
   // Nome de uma palavra só ("Cabo", "Bomba", "Filtro") não identifica o produto: usa as primeiras palavras dos atributos
   if (usedPhrase === phrase && tokens.filter((word) => !GENERIC.has(word)).length < 2) {
     const rest = meaningful(description.slice(phrase.length)).filter((word) => !GENERIC.has(word)).slice(0, 3);
-    if (rest.length) { tokens = [...tokens, ...rest]; usedPhrase = description.replace(/[:;]/g, " "); }
+    if (rest.length) { tokens = [...tokens, ...rest]; usedPhrase = description.replace(/[:;,]/g, " ").split(/\s+/).slice(0, 5).join(" "); }
   }
   const unique = [...new Set(tokens.filter((word) => !GENERIC.has(word) || tokens.length <= 2))].slice(0, 6);
   if (unique.length === 0 || unique.every((word) => GENERIC.has(word))) return null;
-  const name = usedPhrase.replace(/\s+/g, " ").trim().slice(0, 90);
-  const display = name === name.toUpperCase() ? name.charAt(0) + name.slice(1).toLowerCase() : name;
-  return { key: [...unique].sort().join(" "), name: display };
+  return { key: [...unique].sort().join(" "), name: displayName(usedPhrase) };
 }
 
 type Rule = [Niche, RegExp];
@@ -140,6 +160,7 @@ const CATALOG_RULES: Rule[] = [
 
 /** Nicho pelas palavras do próprio item (quando não há código de catálogo). */
 const TEXT_RULES: Rule[] = [
+  ["Máquinas e equipamentos", /\b(gerador|grupo gerador)\b/],
   ["Serviços de engenharia e obras", /\b(obra|reforma|construcao de|pavimentacao|engenharia|projeto executivo|drenagem|terraplenagem|recapeamento|asfalto)\b/],
   ["Locação e transporte", /\b(locacao|aluguel|transporte|frete|passagem|fretamento)\b/],
   ["Serviços de manutenção", /\b(manutencao|conserto|reparo|conservacao|instalacao de)\b/],
@@ -153,7 +174,7 @@ const TEXT_RULES: Rule[] = [
   ["Escritório e papelaria", /\b(papel|caneta|lapis|caderno|envelope|grampo|clips|pasta|arquivo|etiqueta|fita adesiva|cola|borracha|apagador|carimbo|prancheta|agenda|bloco|marcador|post-it|calculadora|tesoura|regua|pincel atomico|almofada|livro)\b/],
   ["Limpeza e higiene", /\b(detergente|desinfetante|sabao|sabonete|alcool|agua sanitaria|papel higienico|papel toalha|esponja|vassoura|rodo|balde|saco de lixo|luva de limpeza|shampoo|creme dental|desodorante|inseticida|cloro|multiuso|flanela|pano de chao|lixeira|absorvente)\b/],
   ["Construção e obras", /\b(cimento|areia|brita|tijolo|bloco de concreto|telha|piso|azulejo|ceramica|tinta|massa corrida|argamassa|ferro|vergalhao|madeira|porta|janela|vidro|gesso|forro|cal|reboco|manta asfaltica|pedra|concreto|esquadria|tubo pvc|verniz|selador)\b/],
-  ["Elétrica e iluminação", /\bb(lampada|luminaria|led|reator|fio|cabo eletrico|cabo pp|cabo flexivel|cabo de cobre|cabo isolado|cabo de energia|disjuntor|tomada|interruptor|quadro de distribuicao|transformador|bateria|pilha|poste|refletor|fusivel|conector|eletroduto|cabo flexivel|soquete)\b/],
+  ["Elétrica e iluminação", /\b(lampada|luminaria|led|reator|fio|cabo eletrico|cabo pp|cabo flexivel|cabo de cobre|cabo isolado|cabo de energia|disjuntor|tomada|interruptor|quadro de distribuicao|transformador|bateria|pilha|poste|refletor|fusivel|conector|eletroduto|cabo flexivel|soquete)\b/],
   ["Hidráulica e saneamento", /\b(torneira|registro|valvula|cano|tubo|conexao|joelho|luva pvc|bomba d|caixa d agua|reservatorio|hidrometro|vaso sanitario|pia|sifao|mangueira|esgoto|saneamento|tratamento de agua)\b/],
   ["Veículos, peças e combustíveis", /\b(pneu|oleo lubrificante|filtro de|pastilha|amortecedor|bateria automotiva|gasolina|diesel|etanol|combustivel|automovel|caminhao|onibus|motocicleta|ambulancia|veiculo|retrovisor|correia|embreagem|radiador|farol|para-choque|escapamento)\b/],
   ["Mobiliário e utensílios", /\b(cadeira|mesa|armario|estante|sofa|gaveteiro|banco|poltrona|balcao|arquivo de aco|beliche|colchao|travesseiro|cama|fogao|geladeira|freezer|micro-ondas|bebedouro|panela|prato|copo|talher|garrafa|jarra|bandeja|cortina|persiana|tapete|ventilador)\b/],
@@ -166,6 +187,33 @@ const TEXT_RULES: Rule[] = [
   ["Laboratório e química", /\b(reagente|laboratorio|pipeta|tubo de ensaio|becker|microscopio|centrifuga|estufa|autoclave|balanca de precisao|acido|solvente|reagentes|bureta|placa de petri)\b/],
   ["Embalagens", /\b(embalagem|caixa de papelao|saco plastico|sacola|filme stretch|fita de arquear|pote|frasco|bobina|palete|garrafao)\b/],
   ["Máquinas e equipamentos", /\b(maquina|gerador|motor|compressor|empilhadeira|guindaste|retroescavadeira|soldadora|equipamento|grupo gerador|motosserra|roçadeira|cortador de grama|betoneira|trator)\b/],
+  // --- Regras de reforço: produtos comuns que as regras acima não reconheciam (ordem: do mais específico ao mais geral)
+  ["Informática e tecnologia", /\b(fone de ouvido|fone ouvido|fone|headset|caixa de som|caixa som|microfone|pendrive|hd externo|carregador|cabo usb|cabo hdmi|cabo de rede|cabo rede|cabo audio|suporte monitor|leitor de codigo|etiqueta termica|tinta para impressora)\b/],
+  ["Saúde e hospitalar", /\b(bisturi|sutura|atadura|algodao|compressa|canula|traqueostomia|eletrodo|pinca|haloperidol|clonazepam|ipratropio|sulfato ferroso|agulha|lamina|fio dental|escova dental|dental|cloridrato|sulfato|sodico|acido folico|vitamina|xarope|pomada|colirio|supositorio|ampola|cateter|equipo|escalpe|esparadrapo|micropore|gesso ortopedico|tala|colar cervical|oxigenio|nebulizador|aspirador|bolsa coletora|coletor de residuo|servico de saude|consulta medica|medico|enfermagem|odontologico|clinico|hemograma|ultrassonografia|radiografia|tomografia|mg|comprimido|capsula)\b/],
+  ["Alimentos e bebidas", /\b(batata|banana|laranja|couve|milho|tomate|polvilho|amido|aveia|fuba|cacau|coco|adocante|oleo vegetal|comestivel|legume|cenoura|cebola|alho|mandioca|macaxeira|abobora|repolho|alface|mamao|melancia|limao|abacaxi|uva|maca|pera|abobrinha|beterraba|pimentao|chuchu|inhame|quiabo|vagem|ervilha|lentilha|grao de bico|sardinha|atum|salsicha|linguica|presunto|mortadela|margarina|manteiga|creme de leite|leite condensado|gelatina|pudim|achocolatado|chocolate|doce|geleia|mel|vinagre|fermento|gordura|peixe|camarao|tilapia|farinha|canjica|pipoca|sobremesa|iogurte|requeijao|fecula|conserva|extrato de tomate|massa de tomate|flocos)\b/],
+  ["Limpeza e higiene", /\b(pano de limpeza|pano de chao|pano limpeza|saco para lixo|saco de lixo|saco lixo|cesto lixo|lixo|lustra moveis|escova|limpa aluminio|hipoclorito|peroxido|agua oxigenada|palha de aco|desengordurante|limpa vidro|alvejante|cera liquida|lustrador|removedor|lixeira|coletor de lixo|dispenser|toalha de papel)\b/],
+  ["Hidráulica e saneamento", /\b(boia|caixa d agua|caixa dagua|bomba|hidrante|ralo|sifao|flange|niple|reducao|registro|torneira|chuveiro|vaso|mangueira de jardim|fita veda rosca|veda rosca)\b/],
+  ["Construção e obras", /\b(anel de vedacao|anel vedacao|colher de pedreiro|caixa de passagem|rolo de pintura|rolo pintura|trincha|massa acrilica|rejunte|silicone|espuma expansiva|vedacao|telha|manta|argamassa|areia|brita|gesso|laje|bloco|viga|cimento)\b/],
+  ["Ferramentas e ferragens", /\b(disco de corte|disco corte|disco de lixa|abracadeira|alicate|chave|martelo|serra|furadeira|esmeril|lima|broca|trena|esquadro|grampo|rebite|presilha|pino|cantoneira)\b/],
+  ["Veículos, peças e combustíveis", /\b(pneu|camara de ar|bateria automotiva|filtro de oleo|filtro de ar|vela|correia dentada|lona de freio|pastilha de freio|disco de freio|aditivo|arla|graxa)\b/],
+  ["Vestuário e têxtil", /\b(capa de chuva|capa chuva|touca|prope|macacao|cinta elastica|cinta|calcado|chapeu|bone)\b/],
+  ["Embalagens", /\b(caixa plastica|caixa organizadora|caixa termica|saco plastico|sacola|filme pvc|papel aluminio|pote|tampa|garrafa pet)\b/],
+  ["Mobiliário e utensílios", /\b(cafeteira|garrafa termica|jarra|copo|prato|talher|panela|escorredor|forma|assadeira|colher|garfo|faca|caneca|bandeja|tabua|ralador|abridor|cesto|balde|bacia|vassoura|carrinho)\b/],
+  ["Escritório e papelaria", /\b(giz|corretivo|pincel quadro branco|encadernacao|fita crepe|massa modelar|pincel|cartolina|papel crepom|eva|tnt|grampeador|perfurador|elastico|barbante|fita dupla face|fita adesiva|durex|quadro branco|apagador|livro ata|livro de ponto)\b/],
+  ["Educação, esporte e lazer", /\b(brinquedo|jogo|bola|rede de volei|colchonete|apito|trofeu|medalha|material esportivo|instrumento)\b/],
+  ["Máquinas e equipamentos", /\b(solda|motobomba|bebedouro industrial)\b/],
+  ["Elétrica e iluminação", /\b(extensao eletrica|bateria|pilha|refletor|interruptor|tomada|plug|filtro de linha|estabilizador|eletroduto|conduite|canaleta|cabo|fio)\b/],
+  // --- 2º lote: cauda longa (remédios, odontologia, laboratório, peças, limpeza)
+  ["Saúde e hospitalar", /\b(\d+([.,]\d+)?\s?(mg|mcg|ui)\b|dosagem|dentina|odontologic|dentari|resina composta|anticorpo|hormonio|lidocaina|gabapentina|desmopressina|levonorgestrel|acetato|dieta|enteral|repelente|microbrush|espatula|seladora|revelador|bolsa de acondicionamento|especime|veterinario|vacina|soro|anestesico|antibiotico|analgesico|anti inflamatorio|insulina|glicemia|pesquisa de|dosagem de|exame|sutura)\b/],
+  ["Laboratório e química", /\b(aspecto fisico|formula quimica|cloreto|oxido|corante|eosina|azul de metileno|reagente|solucao tampao|solvente|acido|hidroxido|carbonato|nitrato|fosfato|sulfato de)\b/],
+  ["Elétrica e iluminação", /\b(rele|estator|terminal|soquete|suporte porcelana|fotoeletrico|disjuntor|contator|capacitor|resistencia|transformador|bateria|motor eletrico|servico eletrico)\b/],
+  ["Veículos, peças e combustíveis", /\b(sapata de freio|sapata|cabecote|embreagem|retentor|rolamento|mancal|cruzeta|bomba de oleo|bico injetor|alternador|motor de partida|silencioso|parachoque|amortecedor)\b/],
+  ["Construção e obras", /\b(chapa policarbonato|policarbonato|massa plastica|massa plasticar|convertedor de ferrugem|vedador|vedacao|calha|rufo|forro|esquadria|portao|grade|cerca|tela|arame|massa corrida|selador|verniz|thinner|aguarras)\b/],
+  ["Limpeza e higiene", /\b(refil|mop|desincrustante|limpa evaporador|limpa|desinfetante|inseticida|raticida|repelente|sanitizante|odorizador|aromatizante|detergente|sabao)\b/],
+  ["Mobiliário e utensílios", /\b(sanduicheira|liquidificador|batedeira|fritadeira|chaleira|ferro de passar|ventilador|circulador|mesa|cadeira|banco|prateleira|armario|estante)\b/],
+  ["Eventos, comunicação e publicidade", /\b(flyer|banner|folder|panfleto|cartaz|adesivo|placa de sinalizacao|faixa|impresso grafico|cartao de visita)\b/],
+  ["Serviços gerais", /\b(motorista|jardineiro|porteiro|vigia|recepcionista|auxiliar|servente|zelador|copeiro|cozinheiro|operador|tecnico|analista|assistente|secretaria|agente)\b/],
+  ["Educação, esporte e lazer", /\b(carbono|papel carbono|caderno|lapiseira|mochila|estojo|compasso|transferidor)\b/],
 ];
 
 const SERVICE_NICHES = new Set<Niche>([
@@ -183,7 +231,8 @@ export function nicheFor(headText: string, catalogGroup?: string | null, kind?: 
     const group = fold(catalogGroup).toUpperCase();
     for (const [niche, pattern] of CATALOG_RULES) if (allowed(niche) && pattern.test(group)) return niche;
   }
-  const text = ` ${fold(headText)} `;
+  const folded = fold(headText);
+  const text = ` ${folded} ${words(folded).map(singular).join(" ")} `;
   for (const [niche, pattern] of TEXT_RULES) if (allowed(niche) && pattern.test(text)) return niche;
   return kind === "servico" ? "Serviços gerais" : "Outros";
 }

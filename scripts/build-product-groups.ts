@@ -1,7 +1,7 @@
 // Agrupa itens equivalentes (descrições diferentes) em produtos, classifica por nicho e atualiza as estatísticas.
-// Incremental: só processa itens ainda sem grupo. Uso: node --env-file=... --conditions=react-server --import tsx scripts/build-product-groups.ts [--rebuild]
+// Incremental: só processa itens ainda sem grupo. Uso: node --env-file=... --conditions=react-server --import tsx scripts/build-product-groups.ts [--rebuild | --reclassify]
 import { getPool } from "../src/lib/local-db/pool";
-import { headKey, nicheFor, type Niche } from "../src/lib/product-grouping";
+import { displayName, headKey, nicheFor, type Niche } from "../src/lib/product-grouping";
 
 const BATCH = 4000;
 const MERGE_SIMILARITY = 0.75;
@@ -33,10 +33,7 @@ const pool = getPool();
 const groupIds = new Map<string, string>();
 const touched = new Set<string>();
 
-function cleanName(text: string) {
-  const name = text.replace(/\s+/g, " ").trim().slice(0, 90);
-  return name === name.toUpperCase() ? name.charAt(0) + name.slice(1).toLowerCase() : name;
-}
+const cleanName = displayName;
 
 function seedFor(item: ItemRow): GroupSeed | null {
   const kind = item.kind ?? (item.mos === "S" ? "servico" : item.mos === "M" ? "material" : null);
@@ -163,8 +160,39 @@ async function refreshStats(groupIdList: string[]) {
   }
 }
 
+/** Reaplica as regras de nicho e de nome aos produtos que já existem, sem refazer o agrupamento dos itens (rápido, não esvazia a tela). */
+async function reclassify() {
+  let offset = 0; let changed = 0; let total = 0;
+  for (;;) {
+    const { rows } = await pool.query<{ id: string; name: string; niche: string; kind: "material" | "servico" | null; catalog_group: string | null; search_text: string }>(
+      "select id, name, niche, kind, catalog_group, left(search_text, 400) as search_text from public.product_groups where canonical_key <> 'none' order by id limit 5000 offset $1",
+      [offset],
+    );
+    if (!rows.length) break;
+    offset += rows.length; total += rows.length;
+    const ids: string[] = []; const niches: string[] = []; const names: string[] = [];
+    for (const row of rows) {
+      const name = displayName(row.name);
+      const niche = nicheFor(`${name} ${row.search_text}`, row.catalog_group, row.kind);
+      if (niche !== row.niche || name !== row.name) { ids.push(row.id); niches.push(niche); names.push(name); }
+    }
+    if (ids.length) {
+      await pool.query(
+        "update public.product_groups g set niche = v.niche, name = v.name, updated_at = now() from (select unnest($1::uuid[]) as id, unnest($2::text[]) as niche, unnest($3::text[]) as name) v where g.id = v.id",
+        [ids, niches, names],
+      );
+      changed += ids.length;
+    }
+    console.log(`reclassificados: ${total} produtos vistos, ${changed} alterados`);
+  }
+  const { rows } = await pool.query<{ niche: string; n: string }>("select niche, count(*) as n from public.product_groups where item_count > 0 and canonical_key <> 'none' group by 1 order by 2 desc limit 8");
+  console.log(JSON.stringify({ reclassificados: total, alterados: changed, nichos: rows.map((row) => `${row.niche}: ${row.n}`) }));
+  await pool.end();
+}
+
 async function main() {
   const started = Date.now();
+  if (process.argv.includes("--reclassify")) { await reclassify(); return; }
   if (process.argv.includes("--rebuild")) {
     await pool.query("update public.procurement_items set group_id = null where group_id is not null");
     await pool.query("delete from public.product_groups");

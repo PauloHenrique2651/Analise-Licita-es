@@ -65,3 +65,29 @@ describe("nicheFor", () => {
     expect(nicheFor("objeto estranho xyz", null, "material")).toBe("Outros");
   });
 });
+
+describe("cada nicho reconhece seus produtos comuns (protege contra regra quebrada)", () => {
+  const casos: Array<[string, string]> = [
+    ["Saúde e hospitalar", "fralda descartavel infantil"], ["Saúde e hospitalar", "luva cirurgica estéril"],
+    ["Alimentos e bebidas", "arroz agulhinha tipo 1"], ["Alimentos e bebidas", "batata inglesa"],
+    ["Informática e tecnologia", "toner para impressora laser"], ["Informática e tecnologia", "notebook 15 polegadas"],
+    ["Escritório e papelaria", "papel sulfite a4"], ["Escritório e papelaria", "caneta esferografica azul"],
+    ["Limpeza e higiene", "detergente neutro 500ml"], ["Limpeza e higiene", "saco para lixo 100 litros"],
+    ["Construção e obras", "cimento portland cp ii"], ["Construção e obras", "tinta acrilica branca"],
+    ["Elétrica e iluminação", "lampada led 9w"], ["Elétrica e iluminação", "cabo flexivel 2,5mm"],
+    ["Hidráulica e saneamento", "torneira de pressao"], ["Hidráulica e saneamento", "registro de gaveta"],
+    ["Veículos, peças e combustíveis", "pneu aro 15"], ["Veículos, peças e combustíveis", "oleo lubrificante 20w50"],
+    ["Mobiliário e utensílios", "cadeira giratoria"], ["Mobiliário e utensílios", "armario de aco"],
+    ["Ferramentas e ferragens", "furadeira de impacto"], ["Ferramentas e ferragens", "parafuso sextavado"],
+    ["Climatização e refrigeração", "ar condicionado split 12000 btus"],
+    ["Segurança e emergência", "extintor de incendio pqs"],
+    ["Vestuário e têxtil", "camiseta algodao"], ["Educação, esporte e lazer", "bola de futebol"],
+    ["Agropecuária", "semente de milho"], ["Laboratório e química", "reagente para analise"],
+    ["Embalagens", "caixa de papelao ondulado"], ["Máquinas e equipamentos", "gerador a diesel"],
+  ];
+  it.each(casos)("%s: %s", (niche, texto) => { expect(nicheFor(texto, null, "material")).toBe(niche); });
+  it("nenhuma regra de texto ficou com padrão corrompido", async () => {
+    const source = (await import("node:fs")).readFileSync(new URL("./product-grouping.ts", import.meta.url), "utf8");
+    expect(source.includes("\bb(")).toBe(false);
+  });
+});
