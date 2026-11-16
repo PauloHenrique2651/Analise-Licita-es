@@ -113,6 +113,13 @@ Atualização manual das localidades:
 node --env-file=.env.local --conditions=react-server --import tsx scripts/sync-geography.ts
 ```
 
+## Produtos, concorrentes e posição de preço
+
+- **Produtos agrupados** (`/app/produtos`): itens iguais com descrições diferentes viram um produto (`product_groups`), por código do catálogo oficial (PDM do CATMAT) quando existe e, senão, pelas palavras principais da descrição; classificados em nichos (`src/lib/product-grouping.ts`). O script `scripts/build-product-groups.ts` é incremental (`nexo-groups.timer`, de hora em hora; `--rebuild` refaz tudo depois de mudar as regras).
+- Cada produto lista as licitações em que aparece, com o link do portal oficial, e quem vence nele. O concorrente (`/app/concorrentes/[id]`) lista os produtos em que vence frente à mediana do mercado.
+- **Posição de preço** (Disputa e página do produto): em que lugar o valor oferecido ficaria entre os vencedores recentes (mesma unidade, `normalize_unit`), e comparação **anônima** com outros clientes do Nexo (só agregados, só com pelo menos 3 outras empresas: `product_clients_position`).
+- **Análise de mercado**: clicar num estado do mapa busca os números dele em `/api/market/summary`.
+
 ## Fontes oficiais complementares
 
 - Receita Federal/Serpro: `/api-cnpj-empresa/v2/empresa/{cnpj}`; exige credenciamento no Conecta;
