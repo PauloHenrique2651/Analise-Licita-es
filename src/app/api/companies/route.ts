@@ -9,8 +9,10 @@ const schema = z.object({ cnpj: z.string().transform(normalizeCnpj).refine(isVal
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
-    const { tenantId } = await requireTenantRole(["owner", "admin", "analyst"]);
+    const { tenantId, supabase } = await requireTenantRole(["owner", "admin", "analyst"]);
     const input = schema.parse(await request.json());
+    const { count } = await supabase.from("companies").select("id", { count: "exact", head: true });
+    if ((count ?? 0) >= 20) return NextResponse.json({ message: "Limite de 20 empresas por conta." }, { status: 400 });
     const data = await saveCompany(input.cnpj, tenantId);
     return NextResponse.json({ data }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {

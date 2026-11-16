@@ -92,11 +92,11 @@ export async function getDailyPanel(supabase: SupabaseClient, uf?: string): Prom
 }
 
 export const FUNNEL_STAGES = [
-  { key: "identified", label: "Identificadas" },
-  { key: "qualified", label: "Qualificadas" },
-  { key: "proposal", label: "Em proposta" },
-  { key: "submitted", label: "Enviadas" },
-  { key: "won", label: "Ganhas" },
+  { key: "identified", label: "Oportunidade" },
+  { key: "qualified", label: "Qualificação" },
+  { key: "proposal", label: "Disputa" },
+  { key: "submitted", label: "Classificação" },
+  { key: "won", label: "Contrato" },
   { key: "lost", label: "Encerradas" },
 ] as const;
 

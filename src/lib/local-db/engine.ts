@@ -268,7 +268,7 @@ const REPLICA_TABLES = new Set([
 ]);
 const RPC_ALLOWED: Record<"anon" | "authenticated", Set<string>> = {
   anon: new Set(["get_public_portal_snapshot", "send_public_portal_message"]),
-  authenticated: new Set(["search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city", "search_product_groups", "product_group_niches", "product_group_procurements", "product_group_variants", "product_group_suppliers", "product_group_winning_prices", "product_price_position", "product_clients_position", "supplier_product_groups", "get_product_group", "get_public_portal_snapshot", "send_public_portal_message"]),
+  authenticated: new Set(["create_opportunity", "apply_default_checklist", "search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city", "search_product_groups", "product_group_niches", "product_group_procurements", "product_group_variants", "product_group_suppliers", "product_group_winning_prices", "product_price_position", "product_clients_position", "supplier_product_groups", "get_product_group", "get_public_portal_snapshot", "send_public_portal_message"]),
 };
 const REPLICA_RPCS = new Set(["search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city", "search_product_groups", "product_group_niches", "product_group_procurements", "product_group_variants", "product_group_suppliers", "product_group_winning_prices", "product_price_position", "supplier_product_groups", "get_product_group"]);
 

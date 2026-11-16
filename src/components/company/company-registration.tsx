@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Building2, Check, LoaderCircle, Search } from "lucide-react";
 import { formatCnpj, isValidCnpj, normalizeCnpj } from "@/utils/cnpj";
@@ -11,6 +12,7 @@ type CompanyResult = {
 };
 
 export function CompanyRegistration() {
+  const router = useRouter();
   const [cnpj, setCnpj] = useState("");
   const [result, setResult] = useState<CompanyResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export function CompanyRegistration() {
       const payload = await response.json() as { message?: string };
       if (!response.ok) throw new Error(payload.message ?? "Não foi possível salvar.");
       setSaved(true);
+      router.refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Não foi possível salvar a empresa.");
     } finally {

@@ -96,9 +96,9 @@ export function ProcurementDrawer() {
     setAddError(null);
     try {
       const title = `${data.control_number ?? "Licitação"} · ${(data.object_description ?? "").slice(0, 140)}`;
-      const { data: created, error } = await createClient().from("opportunities").insert({ procurement_id: data.id, title, stage: "identified", statistical_indicator: true }).select("id").single();
-      if (error || !created) throw error ?? new Error();
-      setAddedId(created.id);
+      const { data: createdId, error } = await createClient().rpc("create_opportunity", { p_procurement_id: data.id, p_title: title, p_company_id: null });
+      if (error || !createdId) throw error ?? new Error();
+      setAddedId(String(createdId));
     } catch {
       setAddError("Não foi possível adicionar. Verifique sua permissão e tente de novo.");
     } finally {
