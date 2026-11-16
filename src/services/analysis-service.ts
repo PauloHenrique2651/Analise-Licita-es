@@ -16,6 +16,15 @@ function externalUrl(value: unknown) {
   try { return ["http:", "https:"].includes(new URL(value).protocol) ? value : null; } catch { return null; }
 }
 
+const PORTAL_LABELS: Record<string, string> = { PNCP: "PNCP", COMPRAS_GOV: "Compras.gov.br", RJ_DADOS_ABERTOS_SIGA: "SIGA/RJ" };
+/** Todos os portais em que a licitação aparece ("PNCP · Compras.gov.br"); cai para o portal principal se não houver lista. */
+function portalList(row: Record<string, unknown>) {
+  const codes = Array.isArray(row.source_codes) ? (row.source_codes as unknown[]).map(String) : [];
+  const labels = [...new Set(codes.map((code) => PORTAL_LABELS[code] ?? code))];
+  if (labels.length) return labels.join(" · ");
+  return row.source_portal_name ? String(row.source_portal_name).replace(/^Portal Nacional de Contrata[çc][õo]es P[úu]blicas$/i, "PNCP") : null;
+}
+
 export async function getAnalysisTable(module: string, search = "", filters: ProcurementSearchFilters = {}): Promise<AnalysisTable> {
   const supabase = await createClient();
   if (!supabase) return empty("Base de dados temporariamente indisponível.");
@@ -30,7 +39,7 @@ export async function getAnalysisTable(module: string, search = "", filters: Pro
         { key: "uf", label: "UF" }, { key: "modality", label: "Modalidade" }, { key: "dispute", label: "Disputa" }, { key: "meEpp", label: "ME/EPP" }, { key: "status", label: "Situação" },
         { key: "portal", label: "Origem" }, { key: "value", label: "Valor estimado", format: "currency" }, { key: "date", label: "Publicação", format: "date" }, { key: "officialUrl", label: "Portal oficial", format: "external" },
       ],
-      rows: (data ?? []).map((row: Record<string, unknown>) => ({ href: `/app/licitacoes/${String(row.id)}`, process: String(row.control_number ?? ""), object: String(row.object_description ?? ""), organization: row.agency_name ? String(row.agency_name) : null, uf: row.state_code ? String(row.state_code) : null, modality: row.modality_name ? String(row.modality_name) : null, dispute: row.dispute_mode ? String(row.dispute_mode) : null, meEpp: row.me_epp_benefit === "exclusiva" ? "Exclusiva" : row.me_epp_benefit === "parcial" ? "Cota/parcial" : row.me_epp_benefit === "sem" ? "Ampla" : null, status: row.status_name ? String(row.status_name) : null, portal: row.source_portal_name ? String(row.source_portal_name).replace(/^Portal Nacional de Contrata[çc][õo]es P[úu]blicas$/i, "PNCP") : null, value: Number(row.estimated_value ?? 0), date: row.published_at ? String(row.published_at) : null, officialUrl: externalUrl(row.source_url) })),
+      rows: (data ?? []).map((row: Record<string, unknown>) => ({ href: `/app/licitacoes/${String(row.id)}`, process: String(row.control_number ?? ""), object: String(row.object_description ?? ""), organization: row.agency_name ? String(row.agency_name) : null, uf: row.state_code ? String(row.state_code) : null, modality: row.modality_name ? String(row.modality_name) : null, dispute: row.dispute_mode ? String(row.dispute_mode) : null, meEpp: row.me_epp_benefit === "exclusiva" ? "Exclusiva" : row.me_epp_benefit === "parcial" ? "Cota/parcial" : row.me_epp_benefit === "sem" ? "Ampla" : null, status: row.status_name ? String(row.status_name) : null, portal: portalList(row), value: Number(row.estimated_value ?? 0), date: row.published_at ? String(row.published_at) : null, officialUrl: externalUrl(row.source_url) })),
       message: data?.length ? null : "Nenhuma licitação sincronizada neste recorte.",
     };
   }

@@ -57,7 +57,7 @@ case "$1" in
     p=${1#backfill-}
     if [ "$p" = PNCP ]; then call=pncp_headers; else call=run; fi
     while true; do
-      out=$(BACKFILL_MIN_DATE=$FLOOR BACKFILL_WITH_ITEMS=false BACKFILL_WINDOW_DAYS=1 BACKFILL_CHUNKS_PER_RUN=4 BACKFILL_PAGE_DELAY_MS=1200 BACKFILL_START_OFFSET_DAYS=3 \
+      out=$(BACKFILL_MIN_DATE=$FLOOR BACKFILL_WITH_ITEMS=false BACKFILL_WINDOW_DAYS=1 BACKFILL_CHUNKS_PER_RUN=4 BACKFILL_PAGE_DELAY_MS=1200 BACKFILL_START_OFFSET_DAYS=$([ "$p" = COMPRAS_GOV ] && echo 0 || echo 3) \
         $call scripts/backfill-procurements.ts --provider=$p 2>&1)
       echo "$out" | python3 -c "$summary" "histórico-cabecalhos $p:"
       case "$out" in *'"complete":true'*) echo "$p cabeçalhos concluído"; exit 0;; esac

@@ -10,6 +10,17 @@ function isoDay(value: string) {
   return date;
 }
 
+/**
+ * A API do Compras.gov trata a data final como EXCLUSIVA: início = fim devolve zero e, para pegar o dia 12, é preciso pedir
+ * de 12 a 13. (Medido em 2026-11-16: 12/11→12/11 = 0; 12/11→13/11 = 538 contratações da modalidade 6.)
+ * Por isso recebemos "inclusive" (como o resto do sistema) e somamos 1 dia ao enviar.
+ */
+function exclusiveEnd(value: string) {
+  const next = new Date(`${isoDay(value)}T12:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
+}
+
 export const comprasGovConnector: ProcurementProvider = {
   name: "Compras.gov.br",
   slug: "COMPRAS_GOV",
@@ -18,7 +29,7 @@ export const comprasGovConnector: ProcurementProvider = {
     const pageNumber = params.page ?? 1;
     const url = new URL(`${env.COMPRAS_GOV_API_BASE_URL}/modulo-contratacoes/1_consultarContratacoes_PNCP_14133`);
     url.searchParams.set("dataPublicacaoPncpInicial", isoDay(params.startDate));
-    url.searchParams.set("dataPublicacaoPncpFinal", isoDay(params.endDate));
+    url.searchParams.set("dataPublicacaoPncpFinal", exclusiveEnd(params.endDate));
     url.searchParams.set("codigoModalidade", String(params.modalityCode));
     url.searchParams.set("pagina", String(pageNumber));
     url.searchParams.set("tamanhoPagina", String(Math.max(10, Math.min(params.pageSize ?? 20, 500))));
@@ -69,7 +80,7 @@ export const comprasGovConnector: ProcurementProvider = {
 export async function fetchComprasGovResultPage(input: { startDate: string; endDate: string; page: number; pageSize: number }) {
   const url = new URL(`${env.COMPRAS_GOV_API_BASE_URL}/modulo-contratacoes/3_consultarResultadoItensContratacoes_PNCP_14133`);
   url.searchParams.set("dataResultadoPncpInicial", isoDay(input.startDate));
-  url.searchParams.set("dataResultadoPncpFinal", isoDay(input.endDate));
+  url.searchParams.set("dataResultadoPncpFinal", exclusiveEnd(input.endDate));
   url.searchParams.set("pagina", String(input.page));
   url.searchParams.set("tamanhoPagina", String(input.pageSize));
   const raw = await fetchJson<unknown>(url, { provider: "COMPRAS_GOV", timeoutMs: 25_000, retries: 3, cacheSeconds: 0 });
