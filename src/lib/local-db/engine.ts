@@ -264,13 +264,13 @@ function finalize(descriptor: QueryDescriptor, rows: unknown[] | null, count: nu
 const REPLICA_TABLES = new Set([
   "procurements", "procurement_items", "procurement_sources", "organizations", "results", "suppliers", "price_records",
   "catalog_items", "products", "categories", "brands", "manufacturers", "cities", "states", "sources",
-  "market_summary", "product_market_summary", "organization_purchase_summary", "company_performance",
+  "product_groups", "product_group_states", "market_summary", "product_market_summary", "organization_purchase_summary", "company_performance",
 ]);
 const RPC_ALLOWED: Record<"anon" | "authenticated", Set<string>> = {
   anon: new Set(["get_public_portal_snapshot", "send_public_portal_message"]),
-  authenticated: new Set(["search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city", "get_public_portal_snapshot", "send_public_portal_message"]),
+  authenticated: new Set(["search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city", "search_product_groups", "product_group_niches", "product_group_procurements", "product_group_variants", "product_group_suppliers", "product_group_winning_prices", "product_price_position", "product_clients_position", "supplier_product_groups", "get_product_group", "get_public_portal_snapshot", "send_public_portal_message"]),
 };
-const REPLICA_RPCS = new Set(["search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city"]);
+const REPLICA_RPCS = new Set(["search_procurements", "get_daily_opportunity_panel", "search_catalog_items", "procurements_by_city", "search_product_groups", "product_group_niches", "product_group_procurements", "product_group_variants", "product_group_suppliers", "product_group_winning_prices", "product_price_position", "supplier_product_groups", "get_product_group"]);
 
 async function execute(descriptor: QueryDescriptor, identity: DbIdentity): Promise<QueryResult> {
   const schema = await getSchema();

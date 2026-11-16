@@ -52,7 +52,7 @@ export async function getMarketSummary(filters: MarketFilters = {}) {
   };
 }
 
-export type RankingItem = { label: string; value: number; detail: string | null };
+export type RankingItem = { label: string; value: number; detail: string | null; /** Página do sistema com o detalhe deste item. */ href?: string };
 export type Rankings = { suppliers: RankingItem[]; products: RankingItem[]; organizations: RankingItem[] };
 
 function timelineByPeriod(rows: Array<{ period_start: string | null; total_value: number | string | null }>) {
@@ -66,28 +66,28 @@ function timelineByPeriod(rows: Array<{ period_start: string | null; total_value
 }
 
 async function getRankings(supabase: Awaited<ReturnType<typeof createClient>>, uf?: string): Promise<Rankings> {
-  let suppliers = supabase.from("company_performance").select("legal_name,state_code,wins,won_value").order("won_value", { ascending: false }).limit(500);
+  let suppliers = supabase.from("company_performance").select("supplier_id,legal_name,state_code,wins,won_value").order("won_value", { ascending: false }).limit(500);
   let products = supabase.from("product_market_summary").select("grouped_name,state_code,procurement_count,total_value").not("grouped_name", "is", null).order("total_value", { ascending: false }).limit(500);
   let organizations = supabase.from("organization_purchase_summary").select("legal_name,state_code,procurement_count,total_value").order("total_value", { ascending: false }).limit(500);
   if (uf) { suppliers = suppliers.eq("state_code", uf); products = products.eq("state_code", uf); organizations = organizations.eq("state_code", uf); }
   const [{ data: supplierRows }, { data: productRows }, { data: organizationRows }] = await Promise.all([suppliers, products, organizations]);
 
-  const top = (rows: Array<Record<string, unknown>> | null, name: string, value: string, detail: (row: Record<string, unknown>) => string | null): RankingItem[] => {
-    const grouped = new Map<string, { value: number; detail: number }>();
+  const top = (rows: Array<Record<string, unknown>> | null, name: string, value: string, detail: (row: Record<string, unknown>) => string | null, href: (row: Record<string, unknown>, label: string) => string | undefined): RankingItem[] => {
+    const grouped = new Map<string, { value: number; detail: number; href?: string }>();
     for (const row of rows ?? []) {
       const label = String(row[name] ?? "").trim();
       if (!label) continue;
-      const current = grouped.get(label) ?? { value: 0, detail: 0 };
+      const current = grouped.get(label) ?? { value: 0, detail: 0, href: href(row, label) };
       current.value += Number(row[value] ?? 0);
       current.detail += Number(detail(row) ?? 0);
       grouped.set(label, current);
     }
-    return [...grouped.entries()].sort((a, b) => b[1].value - a[1].value).slice(0, 5).map(([label, item]) => ({ label, value: item.value, detail: item.detail ? String(item.detail) : null }));
+    return [...grouped.entries()].sort((a, b) => b[1].value - a[1].value).slice(0, 5).map(([label, item]) => ({ label, value: item.value, detail: item.detail ? String(item.detail) : null, href: item.href }));
   };
   return {
-    suppliers: top(supplierRows as Array<Record<string, unknown>> | null, "legal_name", "won_value", (row) => String(row.wins ?? 0)),
-    products: top(productRows as Array<Record<string, unknown>> | null, "grouped_name", "total_value", (row) => String(row.procurement_count ?? 0)),
-    organizations: top(organizationRows as Array<Record<string, unknown>> | null, "legal_name", "total_value", (row) => String(row.procurement_count ?? 0)),
+    suppliers: top(supplierRows as Array<Record<string, unknown>> | null, "legal_name", "won_value", (row) => String(row.wins ?? 0), (row) => row.supplier_id ? `/app/concorrentes/${String(row.supplier_id)}` : undefined),
+    products: top(productRows as Array<Record<string, unknown>> | null, "grouped_name", "total_value", (row) => String(row.procurement_count ?? 0), (_row, label) => `/app/produtos?q=${encodeURIComponent(label)}${uf ? `&uf=${uf}` : ""}`),
+    organizations: top(organizationRows as Array<Record<string, unknown>> | null, "legal_name", "total_value", (row) => String(row.procurement_count ?? 0), (_row, label) => `/app/licitacoes?agency=${encodeURIComponent(label)}${uf ? `&uf=${uf}` : ""}`),
   };
 }
 

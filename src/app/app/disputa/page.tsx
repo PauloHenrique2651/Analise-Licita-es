@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Gavel, ShieldCheck } from "lucide-react";
 import { DisputeCopilot } from "@/components/dispute/dispute-copilot";
+import { PricePosition } from "@/components/products/price-position";
+import { createClient } from "@/lib/supabase/server";
 import { floorPrice } from "@/lib/dispute-copilot";
 import { getDisputeContext, listPreparedDisputes } from "@/services/dispute-copilot-service";
 
@@ -21,6 +23,9 @@ export default async function DisputePage({ searchParams }: { searchParams: Prom
     if (!context) notFound();
     const { item, strategy, references } = context;
     const procurement = item.procurement;
+    const supabase = await createClient();
+    const { data: groupRow } = supabase ? await supabase.from("procurement_items").select("group_id").eq("id", item.id).maybeSingle() : { data: null };
+    const groupId = (groupRow as { group_id: string | null } | null)?.group_id ?? null;
     return (
       <>
         <Link className="back-link" href="/app/disputa"><ArrowLeft aria-hidden="true" />Disputas preparadas</Link>
@@ -30,6 +35,7 @@ export default async function DisputePage({ searchParams }: { searchParams: Prom
             <p>{[procurement?.agency, procurement?.city && procurement?.state ? `${procurement.city}/${procurement.state}` : procurement?.state, procurement?.controlNumber].filter(Boolean).join(" · ")}</p>
           </div>
           <div className="copilot-header-actions">
+            {groupId && <Link className="button" href={`/app/produtos/${groupId}`}>Mercado deste produto</Link>}
             {procurement && <Link className="button" href={`/app/licitacoes/${procurement.id}`}>Ver licitação</Link>}
             {procurement?.sourceUrl && <a className="button primary" href={procurement.sourceUrl} target="_blank" rel="noreferrer">Abrir no portal<ExternalLink aria-hidden="true" /></a>}
           </div>
@@ -43,6 +49,7 @@ export default async function DisputePage({ searchParams }: { searchParams: Prom
           <span><small>Catálogo</small>{item.catalogCode ?? "—"}</span>
         </div>
         <p className="copilot-disclaimer"><ShieldCheck aria-hidden="true" />O Nexo não envia lances. Você confere a recomendação e digita o valor no portal oficial, com o seu login.</p>
+        {groupId && <section className="panel dispute-position"><div className="panel-head"><div><p className="panel-title">Onde o seu valor fica frente aos vencedores</p><small>Compare com o que este produto foi vencido nos últimos meses</small></div></div><PricePosition groupId={groupId} groupName={item.description} defaultOffered={item.estimatedUnitValue ?? undefined} /></section>}
         <DisputeCopilot itemId={item.id} strategy={strategy} estimatedUnitValue={item.estimatedUnitValue} references={references} disputeMode={procurement?.disputeMode ?? null} />
       </>
     );
@@ -57,6 +64,7 @@ export default async function DisputePage({ searchParams }: { searchParams: Prom
           <p>Prepare custo, margem e intervalo de cada item antes da sessão. Na hora, o copiloto diz o próximo lance e quando parar.</p>
         </div>
       </header>
+      <section className="panel dispute-position"><div className="panel-head"><div><p className="panel-title">Posicione o seu preço</p><small>Escolha um produto, informe o valor que pretende oferecer e veja em que posição ficaria entre os vencedores recentes e frente a outros clientes do Nexo</small></div></div><PricePosition /></section>
       {disputes.length === 0 ? (
         <section className="panel module-empty">
           <div className="module-empty-icon"><Gavel aria-hidden="true" /></div>
