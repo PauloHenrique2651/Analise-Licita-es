@@ -1782,3 +1782,11 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
 .dispute-position, .product-side .panel { overflow: visible; }
 .price-position .picker-list { z-index: 50; }
 .dispute-position { position: relative; z-index: 5; }
+
+/* Resultado vazio com filtros: mostra quais filtros tirar */
+.no-results { gap: 12px; }
+.no-results-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 640px; }
+.chip-remove { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; min-height: 36px; border: 1px solid var(--accent-line); border-radius: 999px; background: var(--signal-dim); color: var(--signal); font-size: 13px; text-decoration: none; }
+.chip-remove:hover, .chip-remove:focus-visible { background: var(--surface); border-color: var(--signal); }
+.no-results-hint { max-width: 560px; margin: 0; padding: 10px 14px; border: 1px solid var(--warning-line); border-radius: var(--radius-sm); background: var(--warning-bg); color: var(--warning); font-size: 13px; }
+.no-results-hint a { color: inherit; font-weight: 700; }

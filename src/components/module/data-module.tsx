@@ -9,6 +9,50 @@ function procurementIdFromHref(href: unknown) {
   return match ? match[1] : null;
 }
 
+const FILTER_LABELS: Record<string, (value: string) => string> = {
+  uf: (v) => `Estado ${v}`,
+  municipio: () => "Município escolhido",
+  agency: (v) => `Órgão “${v}”`,
+  cnpj: (v) => `CNPJ ${v}`,
+  modality: (v) => `Modalidade “${v}”`,
+  portal: (v) => `Portal ${v === "COMPRAS_GOV" ? "Compras.gov.br" : v === "PNCP" ? "PNCP" : v === "RJ_DADOS_ABERTOS_SIGA" ? "SIGA/RJ" : v}`,
+  status: (v) => `Situação “${v}”`,
+  from: (v) => `Publicadas desde ${v.split("-").reverse().join("/")}`,
+  to: (v) => `Publicadas até ${v.split("-").reverse().join("/")}`,
+  proposalUntil: (v) => `Propostas até ${v.split("-").reverse().join("/")}`,
+  minValue: (v) => `Valor a partir de R$ ${Number(v).toLocaleString("pt-BR")}`,
+  maxValue: (v) => `Valor até R$ ${Number(v).toLocaleString("pt-BR")}`,
+  dispute: (v) => `Disputa ${v}`,
+  meEpp: (v) => (v === "exclusiva" ? "Exclusiva ME/EPP" : v === "com_beneficio" ? "Com benefício ME/EPP" : "Ampla concorrência"),
+  kind: (v) => (v === "material" ? "Só material" : "Só serviço"),
+  open: () => "Só com propostas abertas",
+  q: (v) => `Busca “${v}”`,
+};
+
+/** Resultado vazio: se há filtros, diz quais são e deixa tirar cada um; só fala em sincronização quando não há filtro nenhum. */
+function NoResults({ filters, query, message }: { filters: Record<string, string | undefined>; query: string; message: string | null }) {
+  const current: Record<string, string> = {};
+  for (const [key, value] of Object.entries({ ...filters, q: query })) if (value && key !== "page" && FILTER_LABELS[key]) current[key] = String(value);
+  const active = Object.keys(current);
+  const without = (key: string, patch: Record<string, string> = {}) => {
+    const next = new URLSearchParams(Object.entries({ ...current, ...patch }).filter(([k]) => k !== key || k in patch));
+    if (!(key in patch)) next.delete(key);
+    return `?${next.toString()}`;
+  };
+  if (active.length === 0) {
+    return <div className="module-empty"><div className="module-empty-icon"><Database aria-hidden="true" /></div><h2>Aguardando dados da sincronização</h2><p>{message}</p></div>;
+  }
+  const comprasGov = current.portal === "COMPRAS_GOV";
+  return <div className="module-empty no-results">
+    <div className="module-empty-icon"><Search aria-hidden="true" /></div>
+    <h2>Nenhum resultado com estes filtros</h2>
+    <p>Existem licitações na base, mas nenhuma atende a todos os filtros ao mesmo tempo. Toque em um filtro para tirá-lo:</p>
+    <div className="no-results-chips">{active.map((key) => <Link key={key} href={without(key)} className="chip-remove">{FILTER_LABELS[key](current[key])}<span aria-hidden="true"> ×</span><span className="sr-only"> (remover filtro)</span></Link>)}</div>
+    {comprasGov && <p className="no-results-hint">O Compras.gov.br costuma publicar com atraso: as licitações mais recentes estão no PNCP. <Link href={without("portal", { portal: "PNCP" })}>Ver as do PNCP</Link></p>}
+    <Link className="button secondary" href="?">Limpar todos os filtros</Link>
+  </div>;
+}
+
 type ModuleProps = {
   title: string;
   description: string;
@@ -102,7 +146,7 @@ export function DataModule({
 
       <section className={`panel data-table-panel ${showProductFilters ? "product-data-panel" : ""}`}>
         <div className="panel-head"><div><p className="panel-title">{showProductFilters ? "Ranking de demanda" : "Resultados encontrados"}</p><small>{totalRows === 0 ? "Nenhum registro" : `${start + 1}–${end} de ${totalRows} registros carregados`} · dados rastreáveis à fonte</small></div>{showProductFilters && <p className="method-note">Agrupamento exato · sem similaridade presumida</p>}</div>
-        {totalRows === 0 ? <div className="module-empty"><div className="module-empty-icon"><Database aria-hidden="true" /></div><h2>Aguardando dados da sincronização</h2><p>{table.message}</p></div> : <div className={`table-scroll ${showProductFilters ? "product-table-scroll" : ""}`}><table><thead><tr>{table.columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>{visibleRows.map((row, index) => <tr className={row.href ? "clickable-row" : undefined} key={`${page}-${index}`}>{table.columns.map((column) => <td key={column.key} data-label={column.label}>{showProductFilters && column.key === "product" ? <div className="product-name-cell"><span>{String(start + index + 1).padStart(2, "0")}</span><strong>{renderValue(row[column.key], column.format)}</strong></div> : column.format === "external" ? (row[column.key] ? <a className="official-table-link" href={String(row[column.key])} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${String(row.process ?? "")} no portal oficial`}>Acessar<ExternalLink aria-hidden="true" /></a> : "Não disponível") : row.href ? (procurementIdFromHref(row.href) ? <DetailLink procurementId={procurementIdFromHref(row.href)!} ariaLabel={`Abrir licitação ${String(row.process ?? "")}`}>{renderValue(row[column.key], column.format)}</DetailLink> : <Link href={String(row.href)} aria-label={`Abrir ${String(row.process ?? row[column.key] ?? "")}`}>{renderValue(row[column.key], column.format)}</Link>) : renderValue(row[column.key], column.format)}</td>)}</tr>)}</tbody></table></div>}
+        {totalRows === 0 ? <NoResults filters={filters} query={query} message={table.message} /> : <div className={`table-scroll ${showProductFilters ? "product-table-scroll" : ""}`}><table><thead><tr>{table.columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>{visibleRows.map((row, index) => <tr className={row.href ? "clickable-row" : undefined} key={`${page}-${index}`}>{table.columns.map((column) => <td key={column.key} data-label={column.label}>{showProductFilters && column.key === "product" ? <div className="product-name-cell"><span>{String(start + index + 1).padStart(2, "0")}</span><strong>{renderValue(row[column.key], column.format)}</strong></div> : column.format === "external" ? (row[column.key] ? <a className="official-table-link" href={String(row[column.key])} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${String(row.process ?? "")} no portal oficial`}>Acessar<ExternalLink aria-hidden="true" /></a> : "Não disponível") : row.href ? (procurementIdFromHref(row.href) ? <DetailLink procurementId={procurementIdFromHref(row.href)!} ariaLabel={`Abrir licitação ${String(row.process ?? "")}`}>{renderValue(row[column.key], column.format)}</DetailLink> : <Link href={String(row.href)} aria-label={`Abrir ${String(row.process ?? row[column.key] ?? "")}`}>{renderValue(row[column.key], column.format)}</Link>) : renderValue(row[column.key], column.format)}</td>)}</tr>)}</tbody></table></div>}
         {totalRows > PAGE_SIZE && <nav className="table-pagination" aria-label="Paginação dos resultados"><span>Página <strong>{page}</strong> de {totalPages}</span><div>{page > 1 ? <Link className="pagination-button" href={pageHref(page - 1, query, filters)} aria-label="Página anterior"><ChevronLeft aria-hidden="true" />Anterior</Link> : <span className="pagination-button disabled"><ChevronLeft aria-hidden="true" />Anterior</span>}{page < totalPages ? <Link className="pagination-button" href={pageHref(page + 1, query, filters)}>Próxima<ChevronRight aria-hidden="true" /></Link> : <span className="pagination-button disabled">Próxima<ChevronRight aria-hidden="true" /></span>}</div></nav>}
       </section>
     </>
