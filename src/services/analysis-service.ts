@@ -149,7 +149,7 @@ export async function getAnalysisTable(module: string, search = "", filters: Pro
   }
 
   if (module === "estados") {
-    const { data, error } = await supabase.from("market_summary").select("state_code, procurement_count, item_count, supplier_count, organization_count, total_value").limit(1000);
+    const { data, error } = await supabase.from("market_summary").select("state_code, procurement_count, item_count, supplier_count, organization_count, total_value").limit(20000);
     if (error) return empty("Não foi possível consultar os estados.");
     const grouped = new Map<string, Record<string, string | number | null>>();
     for (const row of data ?? []) {

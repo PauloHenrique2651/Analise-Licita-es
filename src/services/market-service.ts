@@ -20,7 +20,7 @@ export async function getMarketSummary(filters: MarketFilters = {}) {
   if (filters.startDate) query = query.gte("period_start", filters.startDate);
   if (filters.endDate) query = query.lte("period_start", filters.endDate);
 
-  const { data, error } = await query.limit(500);
+  const { data, error } = await query.limit(20000);
   if (error) return emptyMarketSummary("A base analítica ainda não foi sincronizada");
 
   const rows = data ?? [];
