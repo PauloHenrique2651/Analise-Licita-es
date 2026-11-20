@@ -264,7 +264,7 @@ function finalize(descriptor: QueryDescriptor, rows: unknown[] | null, count: nu
 const REPLICA_TABLES = new Set([
   "procurements", "procurement_items", "procurement_sources", "organizations", "results", "suppliers", "price_records",
   "catalog_items", "products", "categories", "brands", "manufacturers", "cities", "states", "sources",
-  "product_groups", "product_group_states", "market_city_month", "market_summary", "product_market_summary", "organization_purchase_summary", "company_performance",
+  "product_groups", "product_group_states", "market_city_month", "market_city_ranking", "market_summary", "product_market_summary", "organization_purchase_summary", "company_performance",
 ]);
 const RPC_ALLOWED: Record<"anon" | "authenticated", Set<string>> = {
   anon: new Set(["get_public_portal_snapshot", "send_public_portal_message"]),
