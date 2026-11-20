@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronDown, Database, Filter, Info, Radio, RefreshCw, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { BrazilMap } from "./brazil-map";
-import { MarketChart } from "./market-chart";
+import dynamic from "next/dynamic";
 import { CITY_METRICS, MunicipalityMap } from "./municipality-map";
 import type { CityHeat, CityMetric, RankingItem } from "@/services/market-service";
+
+// recharts é pesado (~100 kB): só baixa quando o gráfico aparece, com um espaço do mesmo tamanho para o layout não pular
+const MarketChart = dynamic(() => import("./market-chart").then((module) => module.MarketChart), { ssr: false, loading: () => <div className="chart-container" aria-busy="true"><i className="sk sk-bar" /></div> });
 
 type Summary = {
   status: string;

@@ -11,7 +11,7 @@ export function getPool() {
   if (!globalThis.__nexoLocalPool) {
     const connectionString = process.env.LOCAL_DATABASE_URL;
     if (!connectionString) throw new Error("LOCAL_DATABASE_URL não configurada para o banco local.");
-    globalThis.__nexoLocalPool = new Pool({ connectionString, max: 10, idleTimeoutMillis: 30_000 });
+    globalThis.__nexoLocalPool = new Pool({ connectionString, max: 10, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 5_000 });
   }
   return globalThis.__nexoLocalPool;
 }

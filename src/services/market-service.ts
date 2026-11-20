@@ -20,6 +20,8 @@ export async function getMarketSummary(filters: MarketFilters = {}) {
   if (filters.startDate) query = query.gte("period_start", filters.startDate);
   if (filters.endDate) query = query.lte("period_start", filters.endDate);
 
+  // Rankings não dependem do resumo: buscam juntos em vez de em fila
+  const rankingsPromise = getRankings(supabase, filters.uf);
   const { data, error } = await query.limit(20000);
   if (error) return emptyMarketSummary("A base analítica ainda não foi sincronizada");
 
@@ -48,7 +50,7 @@ export async function getMarketSummary(filters: MarketFilters = {}) {
     },
     timeline: timelineByPeriod(rows),
     stateValues,
-    rankings: await getRankings(supabase, filters.uf),
+    rankings: await rankingsPromise,
   };
 }
 

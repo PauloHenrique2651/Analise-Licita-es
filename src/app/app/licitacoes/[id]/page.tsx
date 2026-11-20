@@ -27,7 +27,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
   const supabase = await createClient();
   if (!supabase) notFound();
   const [{ data: procurement }, { data: itemRows }, { data: sourceRows }] = await Promise.all([
-    supabase.from("procurements").select("*").eq("id", id).maybeSingle(),
+    supabase.from("procurements").select("id,agency_cnpj,agency_name,city_name,control_number,edital_url,estimated_value,homologated_value,modality_name,object_description,opening_at,pncp_id,process_number,proposal_end_at,published_at,purchase_number,purchase_year,sequence_number,source_url,state_code,status_name,unit_name").eq("id", id).maybeSingle(),
     supabase.from("procurement_items").select("id,item_number,original_description,catalog_item_code,unit,quantity,estimated_unit_value,estimated_total_value,homologated_total_value,status_name,has_result").eq("procurement_id", id).order("item_number"),
     supabase.from("procurement_sources").select("external_id,source_url,is_primary,sources(code,name)").eq("procurement_id", id).order("is_primary", { ascending: false }),
   ]);

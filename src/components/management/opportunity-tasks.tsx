@@ -48,17 +48,22 @@ export function OpportunityTasks({ opportunity, tasks, onChange }: { opportunity
     try { await work(); } catch { setError(failure); } finally { setPending(null); }
   }
 
-  const toggle = (task: ChecklistEvent) => run(task.id, async () => {
-    const { error: updateError } = await createClient().from("process_events").update({ metadata: metadataOf(task, { completed: !task.completed }) }).eq("id", task.id);
-    if (updateError) throw updateError;
-    onChange(tasks.map((item) => item.id === task.id ? { ...item, completed: !item.completed } : item));
-  }, "Não foi possível atualizar a tarefa.");
+  // Marcar e remover atualizam a tela na hora; se o servidor recusar, volta ao estado anterior e avisa
+  async function optimistic(next: ChecklistEvent[], save: () => PromiseLike<{ error: unknown }>, failure: string) {
+    const previous = tasks;
+    onChange(next); setError(null);
+    try { const { error: saveError } = await save(); if (saveError) throw saveError; } catch { onChange(previous); setError(failure); }
+  }
 
-  const remove = (task: ChecklistEvent) => run(task.id, async () => {
-    const { error: deleteError } = await createClient().from("process_events").delete().eq("id", task.id);
-    if (deleteError) throw deleteError;
-    onChange(tasks.filter((item) => item.id !== task.id));
-  }, "Não foi possível remover a tarefa.");
+  const toggle = (task: ChecklistEvent) => optimistic(
+    tasks.map((item) => item.id === task.id ? { ...item, completed: !item.completed } : item),
+    () => createClient().from("process_events").update({ metadata: metadataOf(task, { completed: !task.completed }) }).eq("id", task.id),
+    "Não foi possível atualizar a tarefa. A marcação foi desfeita.");
+
+  const remove = (task: ChecklistEvent) => optimistic(
+    tasks.filter((item) => item.id !== task.id),
+    () => createClient().from("process_events").delete().eq("id", task.id),
+    "Não foi possível remover a tarefa. Ela foi restaurada.");
 
   const setDue = (task: ChecklistEvent, date: string) => run(task.id, async () => {
     // Fim do dia no horário de Brasília (23:59 -03:00)
