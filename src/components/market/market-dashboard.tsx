@@ -6,7 +6,8 @@ import { CalendarDays, ChevronDown, Database, Filter, Info, Radio, RefreshCw, Se
 import { createClient } from "@/lib/supabase/client";
 import { BrazilMap } from "./brazil-map";
 import { MarketChart } from "./market-chart";
-import type { RankingItem } from "@/services/market-service";
+import { CITY_METRICS, MunicipalityMap } from "./municipality-map";
+import type { CityHeat, CityMetric, RankingItem } from "@/services/market-service";
 
 type Summary = {
   status: string;
@@ -44,6 +45,34 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
   // Resumo do estado clicado no mapa (o Brasil inteiro vem do servidor e continua colorindo o mapa)
   const [stateData, setStateData] = useState<{ uf: string; summary: Summary } | null>(null);
   const [loadFailed, setLoadFailed] = useState<string | null>(null);
+  // Município escolhido no mapa de calor do estado (ou na lista) e métrica que pinta o mapa
+  const [selectedCity, setSelectedCity] = useState<string>();
+  const [cityMetric, setCityMetric] = useState<CityMetric>("value");
+  const [heat, setHeat] = useState<{ uf: string; cities: CityHeat[] } | null>(null);
+  const [cityData, setCityData] = useState<{ ibge: string; summary: Summary } | null>(null);
+  const [cityFailed, setCityFailed] = useState<string | null>(null);
+
+  function chooseState(uf: string | undefined) { setSelectedUf(uf); setSelectedCity(undefined); }
+
+  useEffect(() => {
+    if (!selectedUf) return;
+    const controller = new AbortController();
+    fetch(`/api/market/summary?uf=${selectedUf}&heat=1`, { signal: controller.signal, cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("falha")))
+      .then((payload: { data: CityHeat[] }) => setHeat({ uf: selectedUf, cities: payload.data }))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [selectedUf]);
+
+  useEffect(() => {
+    if (!selectedCity) return;
+    const controller = new AbortController();
+    fetch(`/api/market/summary?city=${selectedCity}`, { signal: controller.signal, cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("falha")))
+      .then((payload: { data: Summary }) => { setCityData({ ibge: selectedCity, summary: payload.data }); setCityFailed(null); })
+      .catch((error: Error) => { if (error.name !== "AbortError") setCityFailed(selectedCity); });
+    return () => controller.abort();
+  }, [selectedCity]);
 
   useEffect(() => {
     if (!selectedUf) return;
@@ -56,9 +85,14 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
   }, [selectedUf, initialSummary]);
 
   const stateReady = Boolean(selectedUf && stateData && stateData.uf === selectedUf);
-  const loadingState = Boolean(selectedUf) && !stateReady && loadFailed !== selectedUf;
-  const view: Summary = stateReady ? stateData!.summary : initialSummary;
-  const scope = selectedUf ?? "Brasil";
+  const cityReady = Boolean(selectedCity && cityData && cityData.ibge === selectedCity);
+  const loadingState = selectedCity
+    ? !cityReady && cityFailed !== selectedCity
+    : Boolean(selectedUf) && !stateReady && loadFailed !== selectedUf;
+  const view: Summary = cityReady ? cityData!.summary : stateReady ? stateData!.summary : initialSummary;
+  const heatCities = heat && heat.uf === selectedUf ? heat.cities : [];
+  const cityName = selectedCity ? heatCities.find((city) => city.ibge === selectedCity)?.name ?? "Município" : undefined;
+  const scope = cityName ? `${cityName}/${selectedUf}` : selectedUf ?? "Brasil";
 
   useEffect(() => {
     const supabase = createClient();
@@ -98,7 +132,8 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
         <button className="button secondary filter-trigger" onClick={() => setFiltersOpen(true)}><Filter aria-hidden="true" />Filtros <span className="filter-count">{chips.length + (selectedUf ? 1 : 0)}</span></button>
       </div>
       <div className="filter-chips" aria-label="Filtros ativos">
-        {selectedUf && <button onClick={() => setSelectedUf(undefined)}>{selectedUf}<X aria-hidden="true" /></button>}
+        {selectedUf && <button onClick={() => chooseState(undefined)}>{selectedUf}<X aria-hidden="true" /></button>}
+        {selectedCity && <button onClick={() => setSelectedCity(undefined)}>{cityName}<X aria-hidden="true" /></button>}
         {chips.map((chip) => <button key={chip} onClick={() => setChips((items) => items.filter((item) => item !== chip))}>{chip}<X aria-hidden="true" /></button>)}
       </div>
 
@@ -106,8 +141,10 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
 
       {loadFailed && loadFailed === selectedUf && <div className="form-error" role="alert">Não foi possível carregar os números de {loadFailed}. Mostrando o Brasil.</div>}
 
+      {cityFailed && cityFailed === selectedCity && <div className="form-error" role="alert">Não foi possível carregar os números do município. Mostrando o estado.</div>}
+
       <section className={`kpi-grid ${loadingState ? "is-loading" : ""}`} aria-label="Indicadores de mercado" aria-busy={loadingState}>
-        {kpiDefinitions.map(([key, label, methodology, type]) => (
+        {kpiDefinitions.filter(([key]) => key in view.kpis).map(([key, label, methodology, type]) => (
           <article className="kpi-card" key={key}>
             <div className="kpi-label"><span>{label}</span><button className="info-button" aria-label={`Metodologia: ${methodology}`} title={methodology}><Info aria-hidden="true" /></button></div>
             <strong>{format(view.kpis[key] ?? 0, type)}</strong>
@@ -118,12 +155,18 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
 
       <section className="analytics-grid">
         <article className="panel chart-panel">
-          <div className="panel-head"><div><p className="panel-title">Evolução do mercado{selectedUf ? ` · ${selectedUf}` : ""}</p><small>Valor homologado por mês</small></div><button className="select-button">Mensal<ChevronDown aria-hidden="true" /></button></div>
+          <div className="panel-head"><div><p className="panel-title">Evolução do mercado{selectedUf ? ` · ${scope}` : ""}</p><small>Últimos 12 meses · valor por mês</small></div><button className="select-button">Mensal<ChevronDown aria-hidden="true" /></button></div>
           <MarketChart data={view.timeline} />
         </article>
         <article className="panel map-panel">
-          <div className="panel-head"><div><p className="panel-title">Volume por estado</p><small>{loadingState ? "Atualizando os números…" : selectedUf ? `Mostrando ${selectedUf}: clique de novo para voltar ao Brasil` : "Clique em um estado para ver os números dele"}</small></div>{selectedUf && <button className="text-button" onClick={() => setSelectedUf(undefined)}>Limpar</button>}</div>
-          <BrazilMap selected={selectedUf} values={initialSummary.stateValues} onSelect={setSelectedUf} />
+          <div className="panel-head"><div><p className="panel-title">{selectedUf ? `Municípios de ${selectedUf}` : "Volume por estado"}</p><small>{loadingState ? "Atualizando os números…" : selectedCity ? `Mostrando ${cityName}: clique de novo para voltar ao estado` : selectedUf ? "Clique em um município para ver os números dele" : "Clique em um estado para ver os números dele"}</small></div>{selectedUf && <button className="text-button" onClick={() => chooseState(undefined)}>Voltar ao Brasil</button>}</div>
+          {selectedUf && <div className="map-controls">
+            <label>Pintar por<select value={cityMetric} onChange={(event) => setCityMetric(event.target.value as CityMetric)}>{(Object.keys(CITY_METRICS) as CityMetric[]).map((key) => <option key={key} value={key}>{CITY_METRICS[key].label}</option>)}</select></label>
+            <label>Município<select value={selectedCity ?? ""} onChange={(event) => setSelectedCity(event.target.value || undefined)}><option value="">Todo o estado</option>{heatCities.map((city) => <option key={city.ibge} value={city.ibge}>{city.name}</option>)}</select></label>
+          </div>}
+          {selectedUf
+            ? <MunicipalityMap uf={selectedUf} data={heatCities} metric={cityMetric} selected={selectedCity} onSelect={setSelectedCity} />
+            : <BrazilMap selected={selectedUf} values={initialSummary.stateValues} onSelect={chooseState} />}
         </article>
       </section>
 

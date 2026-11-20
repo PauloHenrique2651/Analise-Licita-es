@@ -1860,3 +1860,30 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
 .company-card strong { overflow-wrap: anywhere; }
 .company-card span { color: var(--muted); font-size: 12px; }
 @media (max-width: 720px) { .company-count { margin-left: 0; } .company-filter select { min-width: 0; width: 100%; } .tasks-drawer { width: 100vw; } }
+
+/* Análise de mercado: mapa de municípios */
+.map-controls { display: flex; flex-wrap: wrap; gap: 10px 14px; padding: 4px 22px 0; }
+.map-controls label { display: grid; gap: 3px; font-size: 11px; color: var(--muted); }
+.map-controls select { min-height: 34px; min-width: 150px; max-width: 220px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); padding: 0 8px; font-size: 13px; }
+.municipality-map path { stroke-width: .5; }
+.municipality-map path:hover, .municipality-map path:focus { stroke-width: 1.6; }
+.municipality-map path.selected { stroke-width: 2; }
+
+/* Alertas: grupos de palavras e municipios */
+.terms-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 40px; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); }
+.terms-box:focus-within { border-color: var(--signal); }
+.terms-box input { flex: 1; min-width: 120px; border: 0; outline: 0; background: transparent; min-height: 30px; color: var(--text); }
+.terms-box.chosen { margin-top: 6px; border-style: dashed; }
+.term-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 9px; border: 1px solid var(--accent-line); border-radius: 999px; background: var(--signal-dim); color: var(--signal); font-size: 12px; }
+.term-chip button { display: grid; place-items: center; width: 18px; height: 18px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; padding: 0; }
+.term-chip button svg { width: 12px; }
+.field small { color: var(--muted); font-size: 11px; }
+.alert-list .alert-open { grid-column: 2 / -1; justify-self: start; display: inline-flex; align-items: center; gap: 4px; }
+.alert-list .alert-open svg { width: 14px; }
+.alert-list .alert-open[aria-expanded="true"] svg { transform: rotate(180deg); }
+.alert-matches-wrap { grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 10px; }
+.alert-matches ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.alert-matches li a { display: grid; gap: 2px; padding: 8px 6px; border-radius: var(--radius-sm); color: var(--text); text-decoration: none; }
+.alert-matches li a:hover { background: var(--surface-2); }
+.alert-matches li strong { font-size: 13px; overflow-wrap: anywhere; }
+.alert-matches li span { color: var(--muted); font-size: 11px; }
