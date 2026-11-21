@@ -2006,3 +2006,25 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
 .supplier-table a svg { width: 11px; margin-left: 3px; vertical-align: -1px; }
 .supplier-note { margin: 4px 16px 16px; font-size: 12px; }
 @media (max-width: 720px) { .supplier-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Relatorio gerencial: janela em portal, corpo rolavel e rodape fixo */
+.report-layer { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.report-scrim { position: absolute; inset: 0; border: 0; background: rgba(15, 35, 71, .55); cursor: default; }
+.report-layer .report-dialog { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 0; width: min(680px, 100%); max-height: min(92dvh, 820px); padding: 0; overflow: hidden; background: var(--surface); border-radius: var(--radius); box-shadow: 0 24px 60px rgba(15, 35, 71, .35); }
+.report-layer .report-dialog > header { padding: 18px 22px 12px; border-bottom: 1px solid var(--border); }
+.report-body { display: grid; gap: 14px; padding: 16px 22px; overflow-y: auto; overscroll-behavior: contain; }
+.report-body > p { margin: 0; }
+.report-layer .report-dialog > footer { position: static; padding: 12px 22px; border-top: 1px solid var(--border); background: var(--surface); }
+.report-label { font-size: 13px; font-weight: 600; }
+.report-ufs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 4px; }
+.report-ufs button { min-width: 42px; min-height: 34px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; }
+.report-ufs button.on, .report-kinds button.on { background: var(--signal); border-color: var(--signal); color: #fff; }
+.report-kinds { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 6px; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
+.report-kinds button { min-height: 40px; border: 0; border-right: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; }
+.report-kinds button:last-child { border-right: 0; }
+.report-cities em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--subtle); }
+.report-ready { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--success-bg, #e8f5ee); color: var(--success); }
+.report-ready svg { width: 22px; flex-shrink: 0; }
+.report-ready div { display: grid; flex: 1; min-width: 150px; }
+.report-ready small { color: var(--muted); }
+@media (max-width: 560px) { .report-layer { padding: 0; align-items: stretch; } .report-layer .report-dialog { max-height: 100dvh; border-radius: 0; width: 100%; } .report-body { padding: 14px 16px; } .report-layer .report-dialog > header, .report-layer .report-dialog > footer { padding-left: 16px; padding-right: 16px; } }

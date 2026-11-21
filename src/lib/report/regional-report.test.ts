@@ -35,6 +35,13 @@ describe("relatório gerencial regional", () => {
     expect(considerations.some((item) => item.title.includes("atípicos"))).toBe(true);
   });
 
+  it("explica o recorte por tipo com os números de classificação", () => {
+    const data = normalizeData({ ...(sample as unknown as Record<string, unknown>), scope: { all: 200, withItems: 30, byText: 40, kind: "servico" } });
+    const { considerations } = buildInsights(data, { ...params, itemKind: "servico" });
+    const note = considerations.find((item) => item.title.startsWith("Recorte"));
+    expect(note?.text).toContain("pelo texto do objeto");
+  });
+
   it("gera um PDF válido, também sem nenhum dado", async () => {
     const full = await renderRegionalReport(sample, params, ["Cidade A", "Cidade B"], new Date("2026-07-01T12:00:00Z"));
     expect(full.subarray(0, 5).toString()).toBe("%PDF-");

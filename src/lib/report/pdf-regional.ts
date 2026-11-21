@@ -226,7 +226,7 @@ export function renderRegionalReport(data: RegionalData, params: ReportParams, c
   text(doc, params.regionName, M, 128, { size: 20, color: "#dbe5ff", width: CW });
   text(doc, "Condições comerciais das compras públicas da região: o quê, quando, quanto, onde e de que forma.", M, 166, { size: 11, color: "#b8c7ec", width: CW - 120 });
   text(doc, `Período: ${periodText(params)}`, M, 218, { size: 10.5, bold: true, color: C.white, width: CW });
-  text(doc, `${intFmt.format(cityNames.length)} municípios${params.itemKind ? ` · só ${params.itemKind === "material" ? "materiais" : "serviços"}` : ""} · gerado em ${generatedAt.toLocaleDateString("pt-BR")}`, M, 235, { size: 9.5, color: "#b8c7ec", width: CW });
+  text(doc, `${intFmt.format(cityNames.length)} municípios${params.itemKind ? ` · só ${params.itemKind === "material" ? "produtos" : "serviços"}` : ""} · gerado em ${generatedAt.toLocaleDateString("pt-BR")}`, M, 235, { size: 9.5, color: "#b8c7ec", width: CW });
   const kw = (CW - 18) / 4;
   kpi(doc, M, 296, kw, "Licitações publicadas", intFmt.format(t.procurements), `${intFmt.format(t.agencies)} órgãos compradores`, C.blue);
   kpi(doc, M + kw + 6, 296, kw, "Valor movimentado", brl(t.value), `mediana ${brl(t.medianValue)}`, C.teal);

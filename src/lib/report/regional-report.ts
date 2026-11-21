@@ -4,6 +4,8 @@ export type ReportParams = { regionName: string; cities: string[]; from: string;
 
 type Named = { name: string };
 export type RegionalData = {
+  /** Quantas licitações a região tem, quantas já têm itens coletados e (com filtro de tipo) quantas foram classificadas só pelo texto do objeto. */
+  scope: { all: number; withItems: number; byText: number; kind: string | null };
   totals: { procurements: number; value: number; avgValue: number; medianValue: number; agencies: number; cities: number; withoutValue: number; outliers: number; outlierValue: number; avgDeadlineDays: number; items: number };
   monthly: Array<{ month: string; count: number; value: number }>;
   byCity: Array<{ ibge: string; name: string; count: number; value: number; items: number }>;
@@ -28,7 +30,9 @@ export function normalizeData(raw: Record<string, unknown>): RegionalData {
   const totals = (raw.totals ?? {}) as Record<string, unknown>;
   const ranges = (raw.ranges ?? {}) as Record<string, unknown>;
   const str = (value: unknown, fallback = "") => (value === null || value === undefined ? fallback : String(value));
+  const scope = (raw.scope ?? {}) as Record<string, unknown>;
   return {
+    scope: { all: n(scope.all), withItems: n(scope.withItems), byText: n(scope.byText), kind: scope.kind ? String(scope.kind) : null },
     totals: { procurements: n(totals.procurements), value: n(totals.value), avgValue: n(totals.avgValue), medianValue: n(totals.medianValue), agencies: n(totals.agencies), cities: n(totals.cities), withoutValue: n(totals.withoutValue), outliers: n(totals.outliers), outlierValue: n(totals.outlierValue), avgDeadlineDays: n(totals.avgDeadlineDays), items: n(totals.items) },
     monthly: list("monthly", (row) => ({ month: str(row.month), count: n(row.count), value: n(row.value) })),
     byCity: list("byCity", (row) => ({ ibge: str(row.ibge), name: str(row.name), count: n(row.count), value: n(row.value), items: n(row.items) })),
@@ -102,7 +106,10 @@ export function buildInsights(data: RegionalData, params: ReportParams): { summa
   if (peak && low && peak.count > low.count * 1.6) considerations.push({ tone: "violet", title: "Sazonalidade", text: `O volume varia bastante ao longo do período (pico em ${monthLabel(peak.month)}). Planeje estoque, equipe e documentação para os meses de maior publicação.` });
   if (t.avgDeadlineDays > 0) considerations.push({ tone: "coral", title: "Tempo para preparar a proposta", text: `Em média as propostas abrem ${decimal(t.avgDeadlineDays, 0)} dias depois da publicação. Quem monitora diariamente tem mais tempo para orçar e reunir a documentação.` });
   if (t.outliers > 0) considerations.push({ tone: "coral", title: "Valores atípicos ficaram de fora", text: `${intFmt.format(t.outliers)} ${t.outliers === 1 ? "licitação tem valor" : "licitações têm valores"} a partir de R$ 200 milhões (somariam ${brl(t.outlierValue)}), muito acima do padrão da região e quase sempre erro de digitação nos portais. Elas contam na quantidade, mas não entram nos valores deste relatório.` });
-  if (params.itemKind) considerations.push({ tone: "blue", title: "Recorte por tipo", text: `Este relatório considera só licitações de ${params.itemKind === "material" ? "materiais" : "serviços"} (incluindo as mistas).` });
+  if (params.itemKind) {
+    const sc = data.scope;
+    considerations.push({ tone: "blue", title: `Recorte: só ${params.itemKind === "material" ? "produtos" : "serviços"}`, text: `Das ${intFmt.format(sc.all)} licitações da região no período, ${intFmt.format(t.procurements)} entram neste recorte. ${intFmt.format(Math.max(0, t.procurements - sc.byText))} foram classificadas pelos itens e ${intFmt.format(sc.byText)} pelo texto do objeto, porque os itens delas ainda não foram coletados. Licitações sem itens e sem palavras típicas no objeto ficam de fora.` });
+  }
   return { summary, considerations };
 }
 
