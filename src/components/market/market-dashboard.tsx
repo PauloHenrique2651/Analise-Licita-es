@@ -49,13 +49,15 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
   const [stateData, setStateData] = useState<{ uf: string; summary: Summary } | null>(null);
   const [loadFailed, setLoadFailed] = useState<string | null>(null);
   // Município escolhido no mapa de calor do estado (ou na lista) e métrica que pinta o mapa
-  const [selectedCity, setSelectedCity] = useState<string>();
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [cityMetric, setCityMetric] = useState<CityMetric>("value");
   const [heat, setHeat] = useState<{ uf: string; cities: CityHeat[] } | null>(null);
-  const [cityData, setCityData] = useState<{ ibge: string; summary: Summary } | null>(null);
+  const [cityData, setCityData] = useState<{ key: string; summary: Summary } | null>(null);
   const [cityFailed, setCityFailed] = useState<string | null>(null);
 
-  function chooseState(uf: string | undefined) { setSelectedUf(uf); setSelectedCity(undefined); }
+  function chooseState(uf: string | undefined) { setSelectedUf(uf); setSelectedCities([]); }
+  const toggleCity = (ibge: string | undefined) => { if (ibge) setSelectedCities((current) => current.includes(ibge) ? current.filter((item) => item !== ibge) : [...current, ibge].slice(0, 50)); };
+  const citiesKey = selectedCities.join(",");
 
   useEffect(() => {
     if (!selectedUf) return;
@@ -68,14 +70,14 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
   }, [selectedUf]);
 
   useEffect(() => {
-    if (!selectedCity) return;
+    if (!citiesKey) return;
     const controller = new AbortController();
-    fetch(`/api/market/summary?city=${selectedCity}`, { signal: controller.signal, cache: "no-store" })
+    fetch(`/api/market/summary?city=${citiesKey}`, { signal: controller.signal, cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("falha")))
-      .then((payload: { data: Summary }) => { setCityData({ ibge: selectedCity, summary: payload.data }); setCityFailed(null); })
-      .catch((error: Error) => { if (error.name !== "AbortError") setCityFailed(selectedCity); });
+      .then((payload: { data: Summary }) => { setCityData({ key: citiesKey, summary: payload.data }); setCityFailed(null); })
+      .catch((error: Error) => { if (error.name !== "AbortError") setCityFailed(citiesKey); });
     return () => controller.abort();
-  }, [selectedCity]);
+  }, [citiesKey]);
 
   useEffect(() => {
     if (!selectedUf) return;
@@ -88,13 +90,14 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
   }, [selectedUf, initialSummary]);
 
   const stateReady = Boolean(selectedUf && stateData && stateData.uf === selectedUf);
-  const cityReady = Boolean(selectedCity && cityData && cityData.ibge === selectedCity);
-  const loadingState = selectedCity
-    ? !cityReady && cityFailed !== selectedCity
+  const cityReady = Boolean(citiesKey && cityData && cityData.key === citiesKey);
+  const loadingState = citiesKey
+    ? !cityReady && cityFailed !== citiesKey
     : Boolean(selectedUf) && !stateReady && loadFailed !== selectedUf;
   const view: Summary = cityReady ? cityData!.summary : stateReady ? stateData!.summary : initialSummary;
   const heatCities = heat && heat.uf === selectedUf ? heat.cities : [];
-  const cityName = selectedCity ? heatCities.find((city) => city.ibge === selectedCity)?.name ?? "Município" : undefined;
+  const cityNameOf = (ibge: string) => heatCities.find((city) => city.ibge === ibge)?.name ?? "Município";
+  const cityName = selectedCities.length === 1 ? cityNameOf(selectedCities[0]) : selectedCities.length > 1 ? `${selectedCities.length} municípios` : undefined;
   const scope = cityName ? `${cityName}/${selectedUf}` : selectedUf ?? "Brasil";
 
   useEffect(() => {
@@ -136,7 +139,7 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
       </div>
       <div className="filter-chips" aria-label="Filtros ativos">
         {selectedUf && <button onClick={() => chooseState(undefined)}>{selectedUf}<X aria-hidden="true" /></button>}
-        {selectedCity && <button onClick={() => setSelectedCity(undefined)}>{cityName}<X aria-hidden="true" /></button>}
+        {selectedCities.map((ibge) => <button key={ibge} onClick={() => toggleCity(ibge)}>{cityNameOf(ibge)}<X aria-hidden="true" /></button>)}
         {chips.map((chip) => <button key={chip} onClick={() => setChips((items) => items.filter((item) => item !== chip))}>{chip}<X aria-hidden="true" /></button>)}
       </div>
 
@@ -144,7 +147,7 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
 
       {loadFailed && loadFailed === selectedUf && <div className="form-error" role="alert">Não foi possível carregar os números de {loadFailed}. Mostrando o Brasil.</div>}
 
-      {cityFailed && cityFailed === selectedCity && <div className="form-error" role="alert">Não foi possível carregar os números do município. Mostrando o estado.</div>}
+      {cityFailed && cityFailed === citiesKey && <div className="form-error" role="alert">Não foi possível carregar os números dos municípios. Mostrando o estado.</div>}
 
       <section className={`kpi-grid ${loadingState ? "is-loading" : ""}`} aria-label="Indicadores de mercado" aria-busy={loadingState}>
         {kpiDefinitions.filter(([key]) => key in view.kpis).map(([key, label, methodology, type]) => (
@@ -162,13 +165,13 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
           <MarketChart data={view.timeline} />
         </article>
         <article className="panel map-panel">
-          <div className="panel-head"><div><p className="panel-title">{selectedUf ? `Municípios de ${selectedUf}` : "Volume por estado"}</p><small>{loadingState ? "Atualizando os números…" : selectedCity ? `Mostrando ${cityName}: clique de novo para voltar ao estado` : selectedUf ? "Clique em um município para ver os números dele" : "Clique em um estado para ver os números dele"}</small></div>{selectedUf && <button className="text-button" onClick={() => chooseState(undefined)}>Voltar ao Brasil</button>}</div>
+          <div className="panel-head"><div><p className="panel-title">{selectedUf ? `Municípios de ${selectedUf}` : "Volume por estado"}</p><small>{loadingState ? "Atualizando os números…" : selectedCities.length ? `Mostrando ${cityName}: clique nos municípios para somar ou tirar`  : selectedUf ? "Clique em um ou mais municípios para ver os números deles" : "Clique em um estado para ver os números dele"}</small></div>{selectedUf && <button className="text-button" onClick={() => chooseState(undefined)}>Voltar ao Brasil</button>}</div>
           {selectedUf && <div className="map-controls">
             <label>Pintar por<select value={cityMetric} onChange={(event) => setCityMetric(event.target.value as CityMetric)}>{(Object.keys(CITY_METRICS) as CityMetric[]).map((key) => <option key={key} value={key}>{CITY_METRICS[key].label}</option>)}</select></label>
-            <label>Município<select value={selectedCity ?? ""} onChange={(event) => setSelectedCity(event.target.value || undefined)}><option value="">Todo o estado</option>{heatCities.map((city) => <option key={city.ibge} value={city.ibge}>{city.name}</option>)}</select></label>
+            <label>Municípios<select value="" onChange={(event) => { toggleCity(event.target.value); }}><option value="">{selectedCities.length ? "Adicionar outro município" : "Todo o estado"}</option>{heatCities.filter((city) => !selectedCities.includes(city.ibge)).map((city) => <option key={city.ibge} value={city.ibge}>{city.name}</option>)}</select></label>
           </div>}
           {selectedUf
-            ? <MunicipalityMap uf={selectedUf} data={heatCities} metric={cityMetric} selected={selectedCity} onSelect={setSelectedCity} />
+            ? <MunicipalityMap uf={selectedUf} data={heatCities} metric={cityMetric} selected={selectedCities} onSelect={toggleCity} />
             : <BrazilMap selected={selectedUf} values={initialSummary.stateValues} onSelect={chooseState} />}
         </article>
       </section>

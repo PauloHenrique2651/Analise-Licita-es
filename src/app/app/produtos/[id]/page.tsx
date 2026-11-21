@@ -14,12 +14,14 @@ const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "
 const PAGE = 25;
 const num = (value: unknown) => (value === null || value === undefined ? null : Number(value));
 
-export default async function ProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ uf?: string; page?: string }> }) {
+export default async function ProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ uf?: string; page?: string; municipio?: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const values = await searchParams;
   const uf = values.uf && UFS.includes(values.uf.toUpperCase()) ? values.uf.toUpperCase() : "";
   const page = Math.max(1, Number.parseInt(values.page ?? "1", 10) || 1);
+  // Municípios (códigos IBGE separados por vírgula) escolhidos no mapa da análise de mercado
+  const cityCodes = [...new Set((values.municipio ?? "").split(",").filter((code) => /^\d{7}$/.test(code)))].slice(0, 50);
 
   const supabase = await createClient();
   if (!supabase) notFound();
@@ -28,18 +30,21 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   if (!group) notFound();
 
   const [procurements, suppliers, variants] = await Promise.all([
-    supabase.rpc("product_group_procurements", { p_group_id: id, p_state: uf || null, p_limit: PAGE, p_offset: (page - 1) * PAGE }),
+    supabase.rpc("product_group_procurements", { p_group_id: id, p_state: uf || null, p_limit: PAGE, p_offset: (page - 1) * PAGE, p_cities: cityCodes }),
     supabase.rpc("product_group_suppliers", { p_group_id: id, p_state: uf || null, p_days: 730, p_limit: 8 }),
     supabase.rpc("product_group_variants", { p_group_id: id, p_limit: 8 }),
   ]);
+  const { data: cityRows } = cityCodes.length ? await supabase.from("cities").select("ibge_code,name").in("ibge_code", cityCodes) : { data: [] };
+  const cityNames = new Map((cityRows ?? []).map((row) => [String(row.ibge_code), String(row.name)]));
   const rows = (procurements.data ?? []) as Array<Record<string, unknown>>;
   const total = Number(rows[0]?.total_count ?? 0);
   const pages = Math.max(1, Math.ceil(total / PAGE));
   const winners = (suppliers.data ?? []) as Array<Record<string, unknown>>;
   const names = (variants.data ?? []) as Array<{ description: string; occurrences: number }>;
   const unit = group.unit ? String(group.unit) : null;
-  const link = (patch: { uf?: string; page?: number }) => {
-    const query = new URLSearchParams(); const nextUf = patch.uf ?? uf; if (nextUf) query.set("uf", nextUf); if (patch.page && patch.page > 1) query.set("page", String(patch.page));
+  const link = (patch: { uf?: string; page?: number; municipio?: string }) => {
+    const query = new URLSearchParams(); const nextUf = patch.uf ?? uf; if (nextUf) query.set("uf", nextUf);
+    const nextCities = patch.municipio ?? cityCodes.join(","); if (nextCities) query.set("municipio", nextCities); if (patch.page && patch.page > 1) query.set("page", String(patch.page));
     return `/app/produtos/${id}${query.toString() ? `?${query}` : ""}`;
   };
 
@@ -62,7 +67,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
     <div className="product-layout">
       <section className="panel product-appearances">
-        <div className="panel-head"><div><p className="panel-title">Licitações em que aparece</p><small>{total.toLocaleString("pt-BR")} {uf ? `em ${uf}` : "no Brasil"} · com o link direto para o portal</small></div></div>
+        <div className="panel-head"><div><p className="panel-title">Licitações em que aparece</p><small>{total.toLocaleString("pt-BR")} {cityCodes.length ? `em ${cityCodes.length === 1 ? (cityNames.get(cityCodes[0]) ?? "1 município") : `${cityCodes.length} municípios`}` : uf ? `em ${uf}` : "no Brasil"} · com o link direto para o portal</small></div></div>
+        {cityCodes.length > 0 && <div className="filter-chips" aria-label="Municípios filtrados">{cityCodes.map((code) => <Link key={code} href={link({ municipio: cityCodes.filter((item) => item !== code).join(","), page: 1 })}>{cityNames.get(code) ?? code} ×</Link>)}</div>}
         {rows.length === 0 ? <div className="empty-inline tall"><span>Nenhuma licitação neste recorte.</span></div> : <ul className="appearance-list">{rows.map((row, index) => {
           const official = typeof row.source_url === "string" && /^https?:\/\//.test(row.source_url) ? row.source_url : null;
           const portal = row.source_portal_name ? String(row.source_portal_name).replace(/^Portal Nacional de Contrata[çc][õo]es P[úu]blicas$/i, "PNCP") : null;

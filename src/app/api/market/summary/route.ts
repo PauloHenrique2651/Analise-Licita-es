@@ -5,7 +5,7 @@ import { getCityHeat, getCitySummary, getMarketSummary } from "@/services/market
 
 const querySchema = z.object({
   uf: z.string().trim().length(2).transform((value) => value.toUpperCase()).optional(),
-  city: z.string().trim().regex(/^\d{7}$/).optional(),
+  city: z.string().trim().regex(/^\d{7}(,\d{7}){0,49}$/).transform((value) => [...new Set(value.split(","))]).optional(),
   heat: z.literal("1").optional(),
 });
 

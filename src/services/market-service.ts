@@ -146,39 +146,53 @@ export async function getCityHeat(uf: string): Promise<CityHeat[]> {
   return [...totals.values()];
 }
 
-/** Números de um município: indicadores, evolução mensal e rankings (órgãos, vencedores, produtos). */
-export async function getCitySummary(ibge: string) {
+/** Números de um ou mais municípios: indicadores, evolução mensal e rankings (órgãos, vencedores, produtos). */
+export async function getCitySummary(ibges: string[]) {
   const supabase = await createClient();
   if (!supabase) return emptyMarketSummary("Base de dados temporariamente indisponível");
   const since = `${windowStartMonth()}-01`;
   const [{ data: rows }, { data: rankingRows }] = await Promise.all([
-    supabase.from("market_city_month").select("period_start,procurement_count,item_count,organization_count,total_value,refreshed_at").eq("city_ibge_code", ibge).gte("period_start", since).order("period_start", { ascending: true }).limit(60),
-    supabase.rpc("city_market_rankings", { p_city_ibge: ibge, p_from: since }),
+    supabase.from("market_city_month").select("city_ibge_code,period_start,procurement_count,item_count,organization_count,total_value,refreshed_at").in("city_ibge_code", ibges).gte("period_start", since).order("period_start", { ascending: true }).limit(2000),
+    supabase.from("market_city_ranking").select("city_ibge_code,kind,label,ref_id,value,count").in("city_ibge_code", ibges).limit(1000),
   ]);
   const list = rows ?? [];
   const procurements = list.reduce((sum, row) => sum + Number(row.procurement_count ?? 0), 0);
   const marketVolume = list.reduce((sum, row) => sum + Number(row.total_value ?? 0), 0);
-  const ranking = (kind: string, href: (row: { label: string; ref_id: string | null }) => string | undefined): RankingItem[] =>
-    ((rankingRows ?? []) as Array<{ kind: string; label: string; ref_id: string | null; value: number | string; count: number | string }>)
-      .filter((row) => row.kind === kind).map((row) => ({ label: row.label, value: Number(row.value), detail: String(row.count), href: href(row) }));
+  // Órgãos: o maior mês de cada município, somados (um órgão pertence a um só município)
+  const orgsByCity = new Map<string, number>();
+  for (const row of list) orgsByCity.set(String(row.city_ibge_code), Math.max(orgsByCity.get(String(row.city_ibge_code)) ?? 0, Number(row.organization_count ?? 0)));
+  // Rankings: cada município guarda os 5 maiores; somamos os mesmos nomes entre municípios e ficamos com os 5 maiores
+  const ranking = (kind: string, href: (item: { label: string; refId: string | null }) => string | undefined): RankingItem[] => {
+    const merged = new Map<string, { label: string; refId: string | null; value: number; count: number }>();
+    for (const row of (rankingRows ?? []) as Array<{ kind: string; label: string; ref_id: string | null; value: number | string; count: number | string }>) {
+      if (row.kind !== kind) continue;
+      const key = row.ref_id ?? row.label;
+      const current = merged.get(key) ?? { label: row.label, refId: row.ref_id, value: 0, count: 0 };
+      current.value += Number(row.value); current.count += Number(row.count);
+      merged.set(key, current);
+    }
+    return [...merged.values()].sort((a, b) => b.value - a.value).slice(0, 5).map((item) => ({ label: item.label, value: item.value, detail: String(item.count), href: href(item) }));
+  };
+  const cities = ibges.join(",");
   return {
     status: list.length ? "ready" : "empty",
-    message: list.length ? null : "Nenhuma licitação deste município no período.",
+    message: list.length ? null : "Nenhuma licitação neste período para o que foi escolhido.",
     updatedAt: list.at(-1)?.refreshed_at ?? null,
     records: procurements,
     kpis: {
       marketVolume,
       procurements,
       items: list.reduce((sum, row) => sum + Number(row.item_count ?? 0), 0),
-      organizations: Math.max(0, ...list.map((row) => Number(row.organization_count ?? 0))),
+      organizations: [...orgsByCity.values()].reduce((sum, value) => sum + value, 0),
       averageTicket: procurements ? marketVolume / procurements : 0,
     } as Record<string, number>,
     timeline: timelineByPeriod(list.map((row) => ({ period_start: row.period_start, total_value: row.total_value }))),
     stateValues: {} as Record<string, number>,
     rankings: {
-      suppliers: ranking("supplier", (row) => row.ref_id ? `/app/concorrentes/${row.ref_id}` : undefined),
-      products: ranking("product", (row) => `/app/produtos?q=${encodeURIComponent(row.label)}`),
-      organizations: ranking("organization", (row) => `/app/licitacoes?agency=${encodeURIComponent(row.label)}&municipio=${ibge}`),
+      suppliers: ranking("supplier", (item) => item.refId ? `/app/concorrentes/${item.refId}` : undefined),
+      // O produto abre a página dele já filtrada pelos municípios escolhidos: lista as licitações em que aparece
+      products: ranking("product", (item) => item.refId ? `/app/produtos/${item.refId}?municipio=${cities}` : `/app/produtos?q=${encodeURIComponent(item.label)}`),
+      organizations: ranking("organization", (item) => `/app/licitacoes?agency=${encodeURIComponent(item.label)}${ibges.length === 1 ? `&municipio=${ibges[0]}` : ""}`),
     } as Rankings,
   };
 }
