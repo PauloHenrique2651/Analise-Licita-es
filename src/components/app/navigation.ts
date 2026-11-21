@@ -1,7 +1,7 @@
 import {
   BarChart3, Building2, CalendarClock, CalendarDays, CircleDollarSign, FileSearch, Gavel, Heart, Landmark,
   LayoutDashboard, Map, MapPinned, MessageSquareText, PackageSearch, ReceiptText, Scale, Search, Settings2,
-  ShieldCheck, SlidersHorizontal, Sigma, Swords, Target, Users, Workflow, type LucideIcon,
+  ShieldCheck, SlidersHorizontal, Sigma, FileText, Swords, Target, Users, Workflow, type LucideIcon,
 } from "lucide-react";
 
 export interface NavItem { label: string; href: string; icon: LucideIcon; description: string }
@@ -27,6 +27,7 @@ export const NAV_GROUPS: NavGroup[] = [
   { label: "Análise", items: [
     { label: "Dashboard", href: "/app/dashboard", icon: LayoutDashboard, description: "Visão consolidada dos indicadores" },
     { label: "Mercado", href: "/app/mercado", icon: BarChart3, description: "Volume, evolução e mapa das compras públicas" },
+    { label: "Relatório gerencial", href: "/app/relatorios", icon: FileText, description: "PDF com gráficos por município e período" },
     { label: "Painel em números", href: "/app/numeros", icon: Sigma, description: "Totais por estado e município, conferidos com o PNCP" },
     { label: "Produtos", href: "/app/produtos", icon: PackageSearch, description: "Demanda e preço por produto" },
     { label: "Preços", href: "/app/precos", icon: CircleDollarSign, description: "Histórico de preços vencedores" },

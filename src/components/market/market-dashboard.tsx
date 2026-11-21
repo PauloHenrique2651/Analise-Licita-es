@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { BrazilMap } from "./brazil-map";
 import dynamic from "next/dynamic";
 import { CITY_METRICS, MunicipalityMap } from "./municipality-map";
+import { ReportDialog } from "@/components/reports/report-dialog";
 import type { CityHeat, CityMetric, RankingItem } from "@/services/market-service";
 
 // recharts é pesado (~100 kB): só baixa quando o gráfico aparece, com um espaço do mesmo tamanho para o layout não pular
@@ -124,7 +125,7 @@ export function MarketDashboard({ initialSummary }: { initialSummary: Summary })
     <>
       <header className="page-header market-header">
         <div><p className="eyebrow">INTELIGÊNCIA NACIONAL / MERCADO</p><h1>Análise de mercado</h1><p>Compras públicas consolidadas para transformar dados brutos em decisões comerciais verificáveis.</p></div>
-        <div className="market-actions"><span className={liveConnected ? "status-badge" : "status-badge warning"}><Radio aria-hidden="true" />{liveConnected ? "Atualização ao vivo" : "Conectando"}</span><button className="button secondary" disabled={refreshing} onClick={() => startRefresh(() => router.refresh())}><RefreshCw className={refreshing ? "spin" : ""} aria-hidden="true" />{refreshing ? "Atualizando…" : "Atualizar"}</button></div>
+        <div className="market-actions"><ReportDialog label="Relatório em PDF" variant="secondary" /><span className={liveConnected ? "status-badge" : "status-badge warning"}><Radio aria-hidden="true" />{liveConnected ? "Atualização ao vivo" : "Conectando"}</span><button className="button secondary" disabled={refreshing} onClick={() => startRefresh(() => router.refresh())}><RefreshCw className={refreshing ? "spin" : ""} aria-hidden="true" />{refreshing ? "Atualizando…" : "Atualizar"}</button></div>
       </header>
 
       <section className="data-strip evidence-strip" aria-label="Situação dos dados">

@@ -1953,3 +1953,42 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
 .admin-note svg { width: 14px; flex-shrink: 0; margin-top: 2px; }
 @media (max-width: 900px) { .admin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .log-list li { grid-template-columns: 52px minmax(0, 1fr); } .log-list li > .status-badge { grid-column: 2; justify-self: start; } .collector-list li { grid-template-columns: auto minmax(0, 1fr); } .collector-side { grid-column: 2; justify-items: start; text-align: left; } }
 .pncp-check-meta { margin: 0 16px 8px; font-size: 12px; }
+
+/* Relatorio gerencial: janela de filtros */
+.report-layer { z-index: 130; display: grid; place-items: center; padding: 16px; }
+.report-dialog { position: relative; z-index: 1; width: min(640px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; display: grid; gap: 14px; padding: 22px; background: var(--surface); border-radius: var(--radius); box-shadow: 0 24px 60px rgba(15, 35, 71, .28); }
+.report-dialog header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.report-dialog h2 { margin: 2px 0 0; font-size: 20px; }
+.report-dialog > p { margin: 0; }
+.report-grid { display: grid; grid-template-columns: 1fr 140px; gap: 12px; }
+.report-grid .field input, .report-grid .field select, .report-dialog .field select { width: 100%; }
+.report-preset { justify-self: start; }
+.report-search { display: flex; align-items: center; gap: 8px; padding: 0 10px; min-height: 38px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); }
+.report-search svg { width: 16px; color: var(--subtle); flex-shrink: 0; }
+.report-search input { flex: 1; border: 0; outline: 0; background: transparent; min-height: 36px; color: var(--text); }
+.report-cities { list-style: none; margin: 6px 0 0; padding: 4px; max-height: 190px; overflow-y: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.report-cities label { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.report-cities label:hover { background: var(--surface-2); }
+.report-chosen { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.report-presets { display: flex; flex-wrap: wrap; gap: 14px; margin-top: -6px; }
+.report-dialog footer { display: flex; justify-content: flex-end; gap: 10px; position: sticky; bottom: -22px; padding: 12px 0 0; background: var(--surface); }
+@media (max-width: 560px) { .report-grid { grid-template-columns: 1fr; } .report-cities { grid-template-columns: 1fr; } .report-dialog { padding: 16px; } }
+
+/* Pagina do relatorio gerencial */
+.report-hero { display: flex; gap: 18px; align-items: flex-start; padding: 22px; margin-bottom: 18px; background: linear-gradient(135deg, #0f2347, #1d3f86); color: #fff; border: 0; }
+.report-hero h2 { margin: 0 0 6px; font-size: 20px; color: #fff; }
+.report-hero p { margin: 0 0 14px; color: #c7d3ee; max-width: 62ch; }
+.report-hero-icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 14px; background: rgba(255,255,255,.12); flex-shrink: 0; }
+.report-hero-icon svg { width: 28px; color: #fff; }
+.report-questions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.report-question { padding: 16px; border-top: 4px solid var(--signal); }
+.report-question svg { width: 22px; margin-bottom: 8px; }
+.report-question h3 { margin: 0 0 4px; font-size: 16px; }
+.report-question p { margin: 0; color: var(--muted); font-size: 12.5px; }
+.report-question.coral { border-top-color: #ef6a5b; } .report-question.coral svg { color: #ef6a5b; }
+.report-question.amber { border-top-color: #f5a524; } .report-question.amber svg { color: #f5a524; }
+.report-question.teal { border-top-color: #14a38b; } .report-question.teal svg { color: #14a38b; }
+.report-question.blue { border-top-color: #2f5bea; } .report-question.blue svg { color: #2f5bea; }
+.report-question.violet { border-top-color: #7a5af8; } .report-question.violet svg { color: #7a5af8; }
+.report-note { margin: 14px 0 28px; font-size: 12px; }
+@media (max-width: 900px) { .report-questions { grid-template-columns: repeat(2, minmax(0, 1fr)); } .report-hero { flex-direction: column; } }

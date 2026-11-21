@@ -21,7 +21,7 @@ begin
       and p.proname in (
         'search_procurements', 'get_daily_opportunity_panel', 'search_catalog_items', 'procurements_by_city',
         'search_product_groups', 'product_group_niches', 'product_group_procurements', 'product_group_variants', 'product_group_suppliers', 'product_group_winning_prices', 'product_price_position', 'product_clients_position', 'supplier_product_groups', 'get_product_group',
-        'create_opportunity', 'apply_default_checklist', 'city_market_rankings', 'match_alert_procurements', 'numbers_summary', 'table_estimates',
+        'create_opportunity', 'apply_default_checklist', 'city_market_rankings', 'match_alert_procurements', 'numbers_summary', 'table_estimates', 'regional_report',
         'current_tenant_id', 'is_tenant_member', 'has_tenant_role',
         'similarity', 'similarity_op', 'similarity_dist', 'word_similarity', 'word_similarity_op',
         'word_similarity_commutator_op', 'strict_word_similarity', 'strict_word_similarity_op',

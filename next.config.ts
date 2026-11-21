@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   turbopack: { root: process.cwd() },
+  // pdfkit lê as fontes padrão dos próprios arquivos em node_modules: não pode ser empacotado
+  serverExternalPackages: ["pdfkit"],
   experimental: {
     serverActions: {
       bodySizeLimit: "1mb",
