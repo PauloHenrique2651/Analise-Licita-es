@@ -29,15 +29,23 @@ function pncpLink(control: string) {
  * Serve para fornecedores que ainda não estão na nossa base. Só aparece o que o órgão registrou como resultado.
  */
 export async function lookupSupplierResults(cnpj: string): Promise<SupplierLookup | null> {
-  const today = new Date().toISOString().slice(0, 10);
+  // A API limita cada consulta a 365 dias: divide o período (01/01/2025 até hoje) em janelas de até 364 dias
+  const windows: Array<{ start: string; end: string }> = [];
+  const dayMs = 86_400_000;
+  const floor = new Date("2025-01-01T00:00:00Z").getTime();
+  for (let end = Date.now(); end >= floor; ) {
+    const start = Math.max(floor, end - 364 * dayMs);
+    windows.push({ start: new Date(start).toISOString().slice(0, 10), end: new Date(end).toISOString().slice(0, 10) });
+    end = start - dayMs;
+  }
   const byControl = new Map<string, SupplierLookupRow>();
   let name: string | null = null; let size: string | null = null; let nature: string | null = null;
   let resultItems = 0; let totalValue = 0; let truncated = false;
-  for (let page = 1; page <= MAX_PAGES; page += 1) {
+  for (const window of windows) for (let page = 1; page <= MAX_PAGES; page += 1) {
     const url = new URL(`${env.COMPRAS_GOV_API_BASE_URL}/modulo-contratacoes/3_consultarResultadoItensContratacoes_PNCP_14133`);
     url.searchParams.set("niFornecedor", cnpj);
-    url.searchParams.set("dataResultadoPncpInicial", "2025-01-01");
-    url.searchParams.set("dataResultadoPncpFinal", today);
+    url.searchParams.set("dataResultadoPncpInicial", window.start);
+    url.searchParams.set("dataResultadoPncpFinal", window.end);
     url.searchParams.set("pagina", String(page));
     url.searchParams.set("tamanhoPagina", String(PAGE_SIZE));
     const raw = await fetchJson<{ resultado?: Array<Record<string, unknown>>; totalPaginas?: number } | null>(url, { provider: "COMPRAS_GOV", timeoutMs: 20_000, retries: 1, cacheSeconds: 0, sharedCacheSeconds: 600 });
