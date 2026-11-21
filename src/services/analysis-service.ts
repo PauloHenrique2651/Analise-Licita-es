@@ -46,7 +46,12 @@ export async function getAnalysisTable(module: string, search = "", filters: Pro
 
   if (module === "empresas" || module === "concorrentes") {
     let query = supabase.from("company_performance").select("supplier_id, legal_name, state_code, wins, item_count, organization_count, won_value, average_price").order("won_value", { ascending: false }).limit(500);
-    if (term) query = query.ilike("legal_name", `%${term}%`);
+    // CNPJ/CPF (com ou sem pontuação) procura pelo documento; qualquer outro texto, pelo nome
+    const documento = term.replace(/[.\-/\s]/g, "");
+    if (/^(\d{11}|\d{14})$/.test(documento)) {
+      const { data: suppliers } = await supabase.from("suppliers").select("id").eq("cnpj_cpf", documento).limit(5);
+      query = query.in("supplier_id", (suppliers ?? []).length ? (suppliers ?? []).map((row) => String(row.id)) : ["00000000-0000-0000-0000-000000000000"]);
+    } else if (term) query = query.ilike("legal_name", `%${term}%`);
     const { data, error } = await query;
     if (error) return empty("Não foi possível consultar o desempenho das empresas.");
     const grouped = new Map<string, Record<string, string | number | null>>();

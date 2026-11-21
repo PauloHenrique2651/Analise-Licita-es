@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { SupplierLookup } from "@/components/companies/supplier-lookup";
+import { documentFrom } from "@/services/supplier-lookup-service";
 import { EmptyModule } from "@/components/module/empty-module";
 import { DataModule } from "@/components/module/data-module";
 import { getAnalysisTable } from "@/services/analysis-service";
@@ -55,7 +57,11 @@ export default async function ModulePage({ params, searchParams }: { params: Pro
     };
     const table = await getAnalysisTable(module, q, filters);
     const currentPage = Math.max(1, Number.parseInt(values.page ?? "1", 10) || 1);
-    return <DataModule {...definition} query={q} table={table} filters={values} showProcurementFilters={module === "licitacoes" || module === "pesquisa"} showProductFilters={module === "produtos"} currentPage={currentPage} />;
+    const cnpj = module === "empresas" || module === "concorrentes" ? documentFrom(q) : null;
+    return <>
+      <DataModule {...definition} query={q} table={table} filters={values} showProcurementFilters={module === "licitacoes" || module === "pesquisa"} showProductFilters={module === "produtos"} currentPage={currentPage} />
+      {cnpj && <SupplierLookup cnpj={cnpj} />}
+    </>;
   }
   return <EmptyModule {...definition} />;
 }

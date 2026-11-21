@@ -1992,3 +1992,17 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
 .report-question.violet { border-top-color: #7a5af8; } .report-question.violet svg { color: #7a5af8; }
 .report-note { margin: 14px 0 28px; font-size: 12px; }
 @media (max-width: 900px) { .report-questions { grid-template-columns: repeat(2, minmax(0, 1fr)); } .report-hero { flex-direction: column; } }
+
+/* Consulta de CNPJ */
+.supplier-lookup { margin-top: 18px; }
+.supplier-summary { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 12px; padding: 0 16px 12px; }
+.supplier-summary div { display: grid; gap: 2px; }
+.supplier-summary span, .supplier-summary small { color: var(--muted); font-size: 12px; }
+.supplier-summary strong { font-size: 16px; }
+.supplier-table { padding: 0 16px 8px; }
+.supplier-table table { width: 100%; border-collapse: collapse; }
+.supplier-table th, .supplier-table td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 12.5px; white-space: nowrap; }
+.supplier-table .num { text-align: right; }
+.supplier-table a svg { width: 11px; margin-left: 3px; vertical-align: -1px; }
+.supplier-note { margin: 4px 16px 16px; font-size: 12px; }
+@media (max-width: 720px) { .supplier-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
