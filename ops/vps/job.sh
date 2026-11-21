@@ -4,7 +4,7 @@
 set -uo pipefail
 
 APP=/srv/nexo/app
-FLOOR=${NEXO_FLOOR:-2025-11-14}   # carga histórica: 12 meses
+FLOOR=${NEXO_FLOOR:-2025-01-01}   # carga histórica: desde 01/01/2025
 
 # O diretório do app é trocado a cada deploy, então entra nele a cada chamada (não só no início).
 run()   { (cd "$APP" && node --env-file=/srv/nexo/.env --conditions=react-server --import tsx "$@"); }
@@ -80,6 +80,14 @@ case "$1" in
       echo "$out" | tail -c 300
       case "$out" in *'"complete":true'*) echo "resultados concluído"; exit 0;; esac
       sleep 10
+    done ;;
+  reconcile-PNCP)
+    # Conferência contra o total OFICIAL do PNCP, dia a dia e modalidade a modalidade; o que faltar é buscado na hora.
+    # Anda dos dias mais novos para o piso e recomeça, para pegar publicações tardias. Meta: 100% do PNCP.
+    while true; do
+      out=$(pncp_headers scripts/reconcile-pncp.ts --days=2 2>&1)
+      echo "conferência PNCP: $(echo "$out" | tail -c 600)"
+      sleep 20
     done ;;
   groups)             run scripts/build-product-groups.ts ;;   # agrupa itens equivalentes por produto/nicho (incremental)
   groups-reclassify)  run scripts/build-product-groups.ts --reclassify ;;   # reaplica nichos e nomes sem refazer o agrupamento
