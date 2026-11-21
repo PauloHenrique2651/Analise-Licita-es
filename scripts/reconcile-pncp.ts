@@ -5,7 +5,8 @@
  *
  * Uso: node ... scripts/reconcile-pncp.ts [--days=N] [--from=AAAA-MM-DD] [--floor=AAAA-MM-DD] [--once]
  *   --from  dia mais novo a conferir (padrão: hoje); depois a rotina anda para trás, guardando o ponto em procurement_sync_state.
- *   --days  quantos dias conferir por execução (padrão 2).
+ *   --days  quantos dias do histórico conferir por execução (padrão 2).
+ *   --recent quantos dias mais recentes conferir SEMPRE, antes do histórico (padrão 0; o serviço usa 3): pega publicação tardia.
  *   --floor dia mais antigo (padrão 2025-01-01). Ao chegar nele, recomeça pelos dias mais recentes (publicações tardias).
  */
 import { pncpConnector } from "../src/integrations/procurement/pncp/connector";
@@ -40,24 +41,30 @@ async function main() {
 
   const gaps: Gap[] = [];
   let checked = 0;
-  for (let index = 0; index < days; index += 1) {
-    if (day < floor) { day = brasiliaToday(); rounds += 1; } // terminou a volta: recomeça pelos dias recentes
-    const start = new Date(`${day}T00:00:00-03:00`).toISOString();
-    const end = new Date(`${addDays(day, 1)}T00:00:00-03:00`).toISOString();
+  const recent = Math.max(0, Math.min(Number(argument("recent") ?? 0), 14));
+  const recentDays = Array.from({ length: recent }, (_, offset) => addDays(brasiliaToday(), -offset));
+  for (let index = 0; index < recent + days; index += 1) {
+    const isRecent = index < recent;
+    if (!isRecent && day < floor) { day = brasiliaToday(); rounds += 1; } // terminou a volta: recomeça pelos dias recentes
+    const current = isRecent ? recentDays[index] : day;
+    // O PNCP manda a data de publicação em horário de Brasília SEM fuso e o sistema guarda esse relógio como UTC: o dia é o dia UTC.
+    const start = new Date(`${current}T00:00:00Z`).toISOString();
+    const end = new Date(`${addDays(current, 1)}T00:00:00Z`).toISOString();
     for (const modality of codes) {
-      const first = await pncpConnector.fetchProcurements({ startDate: day, endDate: day, modalityCode: modality, page: 1, pageSize: 50 });
+      const first = await pncpConnector.fetchProcurements({ startDate: current, endDate: current, modalityCode: modality, page: 1, pageSize: 50 });
       const pncpTotal = first.totalRecords ?? 0;
       checked += 1;
       if (pncpTotal === 0) continue;
       const { count } = await client.from("procurements").select("id", { count: "exact", head: true })
         .eq("source_id", source.id).eq("modality_code", modality).gte("published_at", start).lt("published_at", end);
       const ours = count ?? 0;
-      if (ours >= pncpTotal) continue;
+      const saveCoverage = async (have: number) => { await client.from("pncp_coverage").upsert({ day: current, modality, pncp_total: pncpTotal, our_total: have, checked_at: new Date().toISOString() }, { onConflict: "day,modality" }); };
+      if (ours >= pncpTotal) { await saveCoverage(ours); continue; }
 
       // Há diferença: lê todas as páginas do PNCP e separa o que não temos, registro a registro
       const records: NormalizedProcurement[] = [...first.records];
       for (let page = 2; page <= first.totalPages; page += 1) {
-        const next = await pncpConnector.fetchProcurements({ startDate: day, endDate: day, modalityCode: modality, page, pageSize: 50 });
+        const next = await pncpConnector.fetchProcurements({ startDate: current, endDate: current, modalityCode: modality, page, pageSize: 50 });
         records.push(...next.records);
       }
       const have = new Set<string>();
@@ -79,13 +86,14 @@ async function main() {
           await client.from("sync_logs").insert({
             source_id: source.id, endpoint: record.sourceEndpoint, level: "error",
             message: (error instanceof Error ? error.message : "Falha ao gravar na conferência").slice(0, 500),
-            metadata: { externalId: record.externalId, phase: "reconcile", day, modality },
+            metadata: { externalId: record.externalId, phase: "reconcile", day: current, modality },
           });
         }
       }
-      gaps.push({ day, modality, pncp: pncpTotal, ours, missing: missing.length, saved, failed });
+      await saveCoverage(Math.min(pncpTotal, ours + saved));
+      gaps.push({ day: current, modality, pncp: pncpTotal, ours, missing: missing.length, saved, failed });
     }
-    day = addDays(day, -1);
+    if (!isRecent) day = addDays(day, -1);
     if (argument("once")) break;
   }
 

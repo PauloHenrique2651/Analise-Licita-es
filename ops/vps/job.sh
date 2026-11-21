@@ -85,7 +85,7 @@ case "$1" in
     # Conferência contra o total OFICIAL do PNCP, dia a dia e modalidade a modalidade; o que faltar é buscado na hora.
     # Anda dos dias mais novos para o piso e recomeça, para pegar publicações tardias. Meta: 100% do PNCP.
     while true; do
-      out=$(pncp_headers scripts/reconcile-pncp.ts --days=2 2>&1)
+      out=$(pncp_headers scripts/reconcile-pncp.ts --days=2 --recent=3 2>&1)
       echo "conferência PNCP: $(echo "$out" | tail -c 600)"
       sleep 20
     done ;;

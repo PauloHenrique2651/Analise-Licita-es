@@ -1887,3 +1887,26 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
 .alert-matches li a:hover { background: var(--surface-2); }
 .alert-matches li strong { font-size: 13px; overflow-wrap: anywhere; }
 .alert-matches li span { color: var(--muted); font-size: 11px; }
+
+/* Painel em numeros e conferencia com o PNCP */
+.numbers-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; }
+.numbers-filters label, .pncp-check-form label { display: grid; gap: 3px; font-size: 11px; color: var(--muted); }
+.numbers-filters select, .pncp-check-form input { min-height: 38px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); padding: 0 10px; font-size: 14px; }
+.numbers-kpis { grid-template-columns: repeat(4, minmax(130px, 1fr)); }
+.numbers-scroll { max-height: 400px; overflow: auto; }
+.numbers-table .compact-table { width: 100%; border-collapse: collapse; } .numbers-table .compact-table td, .numbers-table .compact-table th, .pncp-check .compact-table td, .pncp-check .compact-table th { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--border); } .compact-table .num { text-align: right; font-variant-numeric: tabular-nums; } .pncp-check .compact-table { width: 100%; border-collapse: collapse; }
+.pncp-check { margin-top: 18px; }
+.pncp-check-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 0 16px 12px; }
+.pncp-check-result { display: flex; align-items: center; gap: 8px; margin: 0 16px 12px; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px; }
+.pncp-check-result svg { width: 18px; flex-shrink: 0; }
+.pncp-check-result.ok { background: var(--success-bg, #e8f5ee); color: var(--success); }
+.pncp-check-result.warn { background: var(--warning-bg); color: var(--warning); }
+.pncp-check .table-wrap { padding: 0 16px 16px; overflow-x: auto; }
+.pncp-check td.neg { color: var(--danger); }
+.numbers-note { margin: 14px 0 28px; font-size: 12px; }
+.numbers-note svg { width: 12px; margin-left: 3px; vertical-align: -1px; }
+@media (max-width: 720px) { .numbers-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.coverage-panel { margin-top: 18px; }
+.coverage-panel .numbers-scroll { padding: 0 16px 16px; }
+.compact-table td.pos { color: var(--success); font-weight: 600; }
+.compact-table td.neg { color: var(--danger); font-weight: 600; }

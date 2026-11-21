@@ -11,9 +11,20 @@ type ExistingProcurement = { id: string; source_id: string; canonical_key: strin
 export class ProcurementRepository {
   private readonly client: SupabaseClient;
   private readonly sourceCache = new Map<ProviderSlug, SourceRecord>();
+  private knownStates: Set<string> | null = null;
 
   constructor(client: SupabaseClient = createAdminClient()) {
     this.client = client;
+  }
+
+  /** UF só vale se existir em `states`: a fonte às vezes manda código fora da lista (ex.: exterior) e a gravação inteira falhava. */
+  private async validState(state?: string | null) {
+    if (!state || state.length !== 2) return null;
+    if (!this.knownStates) {
+      const { data } = await this.client.from("states").select("code");
+      this.knownStates = new Set((data ?? []).map((row) => String(row.code).toUpperCase()));
+    }
+    return this.knownStates.has(state.toUpperCase()) ? state.toUpperCase() : null;
   }
 
   async getSource(code: ProviderSlug) {
@@ -77,13 +88,14 @@ export class ProcurementRepository {
 
   private async upsertOrganization(procurement: NormalizedProcurement, sourceId: string) {
     const externalId = [procurement.agencyCnpj ?? "sem-cnpj", procurement.unitCode ?? procurement.unitName ?? procurement.agencyName ?? "orgao"].join(":");
-    const cityCode = procurement.cityIbgeCode?.length === 7 && procurement.state?.length === 2 && procurement.city
+    const stateCode = await this.validState(procurement.state);
+    const cityCode = procurement.cityIbgeCode?.length === 7 && stateCode && procurement.city
       ? procurement.cityIbgeCode
       : null;
     if (cityCode) {
       const { error: cityError } = await this.client.from("cities").upsert({
         ibge_code: cityCode,
-        state_code: procurement.state,
+        state_code: stateCode,
         name: procurement.city,
       }, { onConflict: "ibge_code", ignoreDuplicates: true });
       // Só cadastra o município se ainda não existir: o nome oficial vem do IBGE (sync-geography) e a grafia da fonte
@@ -96,7 +108,7 @@ export class ProcurementRepository {
       unit_code: procurement.unitCode ?? null,
       unit_name: procurement.unitName ?? null,
       city_ibge_code: cityCode,
-      state_code: procurement.state?.length === 2 ? procurement.state : null,
+      state_code: stateCode,
       source_id: sourceId,
       external_id: externalId,
       source_endpoint: procurement.sourceEndpoint,
@@ -165,6 +177,7 @@ export class ProcurementRepository {
     const existingPriority = existing ? await this.existingSourcePriority(existing.source_id) : Number.POSITIVE_INFINITY;
     const isPrimary = !existing || source.priority <= existingPriority;
     const now = new Date().toISOString();
+    const payloadState = await this.validState(procurement.state);
 
     const payload = {
       organization_id: organizationId,
@@ -200,7 +213,7 @@ export class ProcurementRepository {
       agency_cnpj: procurement.agencyCnpj ?? null,
       unit_name: procurement.unitName ?? null,
       unit_code: procurement.unitCode ?? null,
-      state_code: procurement.state?.length === 2 ? procurement.state : null,
+      state_code: payloadState,
       city_name: procurement.city ?? null,
       opening_at: procurement.openingAt ?? null,
       edital_url: procurement.editalUrl ?? null,
@@ -278,7 +291,15 @@ export class ProcurementRepository {
         raw_data: item.rawData,
       }));
       const { error } = await this.client.from("procurement_items").upsert(rows, { onConflict: "procurement_id,item_number" });
-      if (error) throw error;
+      if (error) {
+        // Item com identificador já usado por outra linha (licitação duplicada na fonte): grava um a um e pula só o repetido,
+        // em vez de perder a licitação inteira.
+        if (!/duplicate key/i.test(String(error.message))) throw error;
+        for (const row of rows) {
+          const { error: rowError } = await this.client.from("procurement_items").upsert(row, { onConflict: "procurement_id,item_number" });
+          if (rowError && !/duplicate key/i.test(String(rowError.message))) throw rowError;
+        }
+      }
     }
 
     return { id: procurementId, inserted: !existing, primarySource: isPrimary };
