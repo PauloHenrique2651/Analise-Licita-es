@@ -1,6 +1,7 @@
 import { Activity, AlertTriangle, CheckCircle2, CircleAlert, Database, ShieldCheck } from "lucide-react";
 import { SyncButton } from "@/components/admin/sync-button";
 import { RealtimeRefresh } from "@/components/admin/realtime-refresh";
+import { PNCP_MODALITIES as MODALITIES } from "@/lib/pncp-modalities";
 import { procurementPortalRegistry } from "@/integrations/procurement/portals/registry";
 import { getAdminOverview, type CoverageModality } from "@/services/admin-service";
 
@@ -9,13 +10,6 @@ export const dynamic = "force-dynamic";
 const integer = new Intl.NumberFormat("pt-BR");
 const dateTime = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 const dayLabel = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" });
-
-/** Códigos de modalidade do PNCP (tabela oficial de domínio). */
-const MODALITIES: Record<number, string> = {
-  1: "Leilão eletrônico", 2: "Diálogo competitivo", 3: "Concurso", 4: "Concorrência eletrônica", 5: "Concorrência presencial",
-  6: "Pregão eletrônico", 7: "Pregão presencial", 8: "Dispensa", 9: "Inexigibilidade", 10: "Manifestação de interesse",
-  11: "Pré-qualificação", 12: "Credenciamento", 13: "Leilão presencial",
-};
 
 const integrations = [
   { name: "PNCP", description: "Contratações, itens, resultados e documentos", ready: true, note: "Fonte nacional prioritária · atualização contínua" },

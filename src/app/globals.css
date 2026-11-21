@@ -1952,3 +1952,4 @@ a.kpi-card:hover, .dashboard-kpi:hover, .dashboard-action:hover, .feature-card:h
 .admin-note { margin: 14px 0 28px; font-size: 12px; display: flex; gap: 6px; align-items: flex-start; }
 .admin-note svg { width: 14px; flex-shrink: 0; margin-top: 2px; }
 @media (max-width: 900px) { .admin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .log-list li { grid-template-columns: 52px minmax(0, 1fr); } .log-list li > .status-badge { grid-column: 2; justify-self: start; } .collector-list li { grid-template-columns: auto minmax(0, 1fr); } .collector-side { grid-column: 2; justify-items: start; text-align: left; } }
+.pncp-check-meta { margin: 0 16px 8px; font-size: 12px; }
